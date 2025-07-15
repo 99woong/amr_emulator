@@ -1,0 +1,9 @@
+#include "presentation/AmrServer.h"
+int main(int argc, char* argv[]) 
+{
+    std::string config_path = "C:/Users/ZENIX/Documents/src/amr_emulator/config/amr_params.yaml";
+    if (argc > 1) config_path = argv[1];
+    AmrServerApp app;
+    app.run(config_path);
+    return 0;
+}
