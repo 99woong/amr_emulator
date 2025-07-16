@@ -12,7 +12,12 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
  1. 개발환경 및 레포지토리 구축 - done
  2. 기능정의 설계 - done
  3. 프로젝트 폴더 및 파일구조 설계 - done
- 4. 기능별 모듈 구현
-         a. TCP소켓 서버 - done
+ 4. Motor controller
+ 5. FMS
+ 6. Localizer
+ 7. Navigation
+ 8. Obstacle detection
+ 9. Battery management
+ 10. 통합 테스트
  
 # 문의
