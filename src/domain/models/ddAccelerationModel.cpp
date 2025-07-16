@@ -26,7 +26,6 @@ DDAccelerationModel::DDAccelerationModel(
     max_angular_acceleration_(max_angular_acceleration),
     max_angular_deceleration_(max_angular_deceleration)
 {
-    // 파라미터 유효성 검사 (옵션)
     if (mass_vehicle_ <= 0 || load_weight_ < 0 || max_torque_ <= 0 || friction_coeff_ < 0 ||
         max_speed_ <= 0 || max_acceleration_ <= 0 || max_deceleration_ <= 0 ||
         wheel_radius_ <= 0 || 
@@ -35,19 +34,21 @@ DDAccelerationModel::DDAccelerationModel(
     }
 }
 
-double DDAccelerationModel::applyAcceleration(double current_speed, double target_speed, double dt) {
-    // 총 질량 계산
+//유효성 확인 필요....(실제 테스트agv로 실험하고 피드백 반영하자)
+double DDAccelerationModel::applyAcceleration(double current_speed, double target_speed, double dt) 
+{
+    // 총질량계산
     double total_mass = mass_vehicle_ + load_weight_;
 
-    // 최대 추진력 (F = Torque / wheel_radius)
-    // 휠 반경이 0이 될 가능성에 대한 방어 코드 추가 (이론적으로는 0일 수 없음)
+    // 최대추진력 (F = Torque / wheel_radius)
+    // 휠반경이 0이 될 가능성에 대한 방어코드추가
     double drive_force = (wheel_radius_ > 0) ? max_torque_ / wheel_radius_ : 0.0;
 
     // 마찰력(운동마찰력)
     double gravity_force = total_mass * GRAVITY;
     double friction_force = gravity_force * friction_coeff_;
 
-    // 힘 계산 (가속/감속 방향에 따라 다름)
+    // 힘계산 (가속/감속 방향에 따라 다름)
     double speed_diff = target_speed - current_speed;
     double net_force = 0.0;
 
@@ -89,7 +90,6 @@ double DDAccelerationModel::applyAcceleration(double current_speed, double targe
     double new_speed = current_speed + acceleration * dt;
 
     // 속도 제한 (0.0에서 max_speed_ 사이로 클램핑)
-    // std::clamp는 C++17부터 사용 가능
     new_speed = std::clamp(new_speed, 0.0, max_speed_);
 
     // 목표 속도를 넘어섰는지 확인 후 클램핑 (미세 조정)

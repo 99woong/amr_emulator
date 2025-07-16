@@ -9,18 +9,8 @@ AmrManager::AmrManager(const AmrConfig& config)
 {
     for (int i = 0; i < config.amr_count; ++i) 
     {
-        // auto motor = std::make_unique<MotorController>(
-        //     config.amr_params.wheel_base,
-        //     config.amr_params.max_speed,
-        //     config.amr_params.max_angular_speed,
-        //     config.amr_params.wheel_radius,
-        //     config.amr_params.max_acceleration,
-        //     config.amr_params.max_angular_acceleration
-        // );
-
         auto motor = std::make_unique<MotorController>(config);
 
-        // auto acceleration_model = 
         auto nav = std::make_unique<Navigation>();
         auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(nav));
         amrs_.emplace_back(std::make_unique<Amr>(i, std::move(vcu)));

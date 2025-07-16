@@ -1,5 +1,6 @@
 #pragma once
-class IVcu {
+class IVcu 
+{
 public:
     virtual ~IVcu() = default;
     virtual void setTargetPosition(double x, double y) = 0;

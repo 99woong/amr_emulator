@@ -6,7 +6,6 @@ class IMotorController
 {
 public:
     virtual ~IMotorController() = default;
-    // 가감속 모델을 설정하는 인터페이스 추가
     virtual void setAccelerationModel(std::shared_ptr<AccelerationModel> model) = 0;
     virtual void setVelocity(double linear, double angular) = 0;
     virtual void update(double dt) = 0;
