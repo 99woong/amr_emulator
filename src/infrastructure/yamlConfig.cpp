@@ -1,4 +1,4 @@
-#include "YamlConfig.h"
+#include "yamlConfig.h"
 #include <yaml-cpp/yaml.h>
 
 AmrConfig YamlConfig::load(const std::string& filename) 

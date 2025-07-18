@@ -1,17 +1,30 @@
-#include "Amr.h"
-Amr::Amr(int id, std::unique_ptr<IVcu> vcu) : id_(id), vcu_(std::move(vcu)) 
+#include "amr.h"
+
+Amr::Amr(int id) : id_(id), cur_idx_(0)
 {
-    
+
 }
-void Amr::update() 
-{ 
-    vcu_->update(); 
+
+void Amr::setOrder(const std::vector<AmrNode>& nodes, const std::vector<AmrEdge>& edges) 
+{
+    nodes_ = nodes;
+    edges_ = edges;
+    cur_idx_ = 0;
 }
-int Amr::getId() const 
+
+
+std::vector<AmrNode> Amr::getNodes() const 
 { 
-    return id_; 
+    return nodes_; 
 }
-IVcu& Amr::getVcu() 
-{ 
-    return *vcu_; 
+
+std::string Amr::getState() const 
+{
+    if (nodes_.empty()) return "Idle";
+    return "AMR" + std::to_string(id_) + " at node: " + nodes_[cur_idx_].id;
+}
+
+void Amr::step() 
+{
+    if (!nodes_.empty() && cur_idx_ + 1 < nodes_.size()) ++cur_idx_;
 }

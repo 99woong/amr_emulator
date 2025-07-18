@@ -1,4 +1,4 @@
-#include "presentation/AmrServerApp.h"
+#include "presentation/amrServer.h"
 int main(int argc, char* argv[]) 
 {
     std::string config_path = "config/amr_params.yaml";

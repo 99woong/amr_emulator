@@ -1,11 +1,11 @@
 #define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
-#include <ws2tcpip.h>
+// #include <winsock2.h>
+// #include <ws2tcpip.h>
 #include <iostream>
 #include <string>
 #include <yaml-cpp/yaml.h>
 
-#pragma comment(lib, "Ws2_32.lib")
+// #pragma comment(lib, "Ws2_32.lib")
 
 int main(int argc, char* argv[]) 
 {

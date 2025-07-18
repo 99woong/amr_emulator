@@ -1,4 +1,4 @@
-#include "presentation/AmrServer.h"
+#include "presentation/amrServer.h"
 int main(int argc, char* argv[]) 
 {
     std::string config_path = "C:/Users/ZENIX/Documents/src/amr_emulator/config/amr_params.yaml";

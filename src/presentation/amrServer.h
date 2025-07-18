@@ -1,7 +1,7 @@
 #pragma once
-#include "../app/AmrManager.h"
+#include <string>
 class AmrServerApp 
 {
-    public:
-        void run(const std::string& config_path);
+public:
+    void run(const std::string& config_path);
 };

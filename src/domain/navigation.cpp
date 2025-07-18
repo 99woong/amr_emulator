@@ -1,4 +1,4 @@
-#include "Navigation.h"
+#include "navigation.h"
 #include <cmath>
 #include <algorithm>
 

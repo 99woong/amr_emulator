@@ -1,7 +1,7 @@
 #pragma once
-#include "IVcu.h"
-#include "IMotorController.h"
-#include "INavigation.h"
+#include "ivcu.h"
+#include "imotorController.h"
+#include "inavigation.h"
 #include <memory>
 class Vcu : public IVcu 
 {
