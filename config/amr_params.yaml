@@ -1,5 +1,6 @@
 amr_count: 1
-base_port: 5000
+base_port: 8080
+protocol_type: "vda5050"
 amr_params:
   max_speed: 1.2
   # max_acceleration: 0.5

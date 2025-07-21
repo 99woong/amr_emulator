@@ -34,6 +34,7 @@ struct AmrConfig
 {
     int amr_count;
     int base_port;
+    std::string protocol_type;    
     AmrParams amr_params;
     ddAccelerationParams dd_acceleration_params;
     // Vda5050Params vda5050params;

@@ -6,9 +6,29 @@
 #include <string>
 #include <memory>
 
-class Amr : public IAmr {
+// Define AmrNode and AmrEdge structs here or in a common header if not already defined
+// (Based on the context, these were likely defined in iamr.h in the previous structure)
+// Re-adding them here for clarity if they were missed.
+// struct AmrNode 
+// {
+//     std::string id;
+//     double x;
+//     double y;
+// };
+
+// struct AmrEdge 
+// {
+//     std::string id;
+//     std::string from;
+//     std::string to;
+// };
+
+
+class Amr : public IAmr 
+{
 public:
     Amr(int id, std::unique_ptr<Vcu> vcu);
+    std::string getId() const { return "amr_" + std::to_string(id_); }    
     void setOrder(const std::vector<AmrNode>& nodes, const std::vector<AmrEdge>& edges) override;
     std::string getState() const override;
     std::vector<AmrNode> getNodes() const override { return nodes_; }

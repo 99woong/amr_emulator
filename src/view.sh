@@ -1,3 +1,4 @@
+#!/bin/bash
 find . -type f -print0 | while IFS= read -r -d $'\0' f; do
     echo "--- 파일명: $f ---" # 파일 이름 출력
     cat "$f" # 파일 내용 출력
