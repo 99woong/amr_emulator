@@ -1,7 +1,7 @@
 #include "amr.h"
 
-Amr::Amr(int id) : id_(id), cur_idx_(0)
-{
+Amr::Amr(int id, std::unique_ptr<Vcu> vcu) : id_(id), vcu_(std::move(vcu)), cur_idx_(0) 
+{ 
 
 }
 
@@ -13,10 +13,10 @@ void Amr::setOrder(const std::vector<AmrNode>& nodes, const std::vector<AmrEdge>
 }
 
 
-std::vector<AmrNode> Amr::getNodes() const 
-{ 
-    return nodes_; 
-}
+// std::vector<AmrNode> Amr::getNodes() const 
+// { 
+//     return nodes_; 
+// }
 
 std::string Amr::getState() const 
 {

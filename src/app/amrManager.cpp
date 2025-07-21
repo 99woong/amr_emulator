@@ -22,6 +22,11 @@ AmrManager::AmrManager(const AmrConfig& config)
        // ---------- 프로토콜 객체 생성 및 핸들러 등록 ----------
        // 필요시 config.protocol_type == "vda5050" 조건 분기
        auto vdaProto = std::make_unique<Vda5050Protocol>();
+
+       std::string agv_id = "amr_" + std::to_string(i);
+       vdaProto->setAgvId(agv_id);
+       vdaProto->useDefaultConfig();
+
        vdaProto->setAmr(amrs_.back().get());
        vdaProto->start();
        protocols_.push_back(std::move(vdaProto));

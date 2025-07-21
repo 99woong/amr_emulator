@@ -1,12 +1,14 @@
 #pragma once
 #include "iamr.h"
 #include "ivcu.h"
+#include "vcu.h"
 #include <vector>
 #include <string>
+#include <memory>
 
 class Amr : public IAmr {
 public:
-    Amr(int id);
+    Amr(int id, std::unique_ptr<Vcu> vcu);
     void setOrder(const std::vector<AmrNode>& nodes, const std::vector<AmrEdge>& edges) override;
     std::string getState() const override;
     std::vector<AmrNode> getNodes() const override { return nodes_; }
@@ -17,4 +19,5 @@ private:
     std::vector<AmrNode> nodes_;
     std::vector<AmrEdge> edges_;
     std::size_t cur_idx_ = 0;
+    std::unique_ptr<Vcu> vcu_;
 };

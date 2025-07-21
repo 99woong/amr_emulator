@@ -11,4 +11,5 @@ public:
     virtual void handleMessage(const std::string& msg, IAmr* amr) = 0;
     // AMR 상태 등 outbound 메시지 송신용 (실제 연결 처리 또는 모킹)
     virtual std::string makeStateMessage(IAmr* amr) = 0;
+    virtual void start() = 0; 
 };

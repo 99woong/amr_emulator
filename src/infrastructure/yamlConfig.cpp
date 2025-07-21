@@ -14,6 +14,8 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.amr_params.max_acceleration = config["amr_params"]["max_acceleration"].as<double>();
     cfg.amr_params.max_deceleration = config["amr_params"]["max_deceleration"].as<double>();
     cfg.amr_params.max_angular_acceleration = config["amr_params"]["max_angular_acceleration"].as<double>();
+    // cfg.vda5050params.broker = config["vda5050_params"]["broker"].as<std::string>();
+    // cfg.vda5050params.port = config["vda5050_params"]["port"].as<int>();
 
     return cfg;
 }

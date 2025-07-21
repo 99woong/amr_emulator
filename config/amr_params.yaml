@@ -1,4 +1,4 @@
-amr_count: 5
+amr_count: 1
 base_port: 5000
 amr_params:
   max_speed: 1.2
@@ -35,4 +35,8 @@ acceleration_model:
     max_speed : 2.0
     max_acceleration : 1.0
     max_deceleration : 1.5
+vda5050_params:
+  broker: "localhost"
+  port: 1883
+
 

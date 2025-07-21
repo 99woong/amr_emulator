@@ -36,7 +36,16 @@ struct AmrConfig
     int base_port;
     AmrParams amr_params;
     ddAccelerationParams dd_acceleration_params;
+    // Vda5050Params vda5050params;
 };
+
+// struct Vda5050Params 
+// {
+//     std::string broker;
+//     int port;
+//     std::string topic;
+//     std::string client_id;
+// };
 
 class YamlConfig 
 {
