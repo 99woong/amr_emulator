@@ -1,13 +1,15 @@
 // domain/protocols/vda5050Protocol.cpp
 
 #include "vda5050Protocol.h"
+#include "NodeEdgeInfo.h"
 #include "iamr.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <vda5050++/config.h>
 
 
-Vda5050Protocol::Vda5050Protocol() : running_(false) {
+Vda5050Protocol::Vda5050Protocol() : running_(false) 
+{
     // 생성자에서 vda_config_와 handle_을 초기화할 수 있습니다.
     // 하지만 handle_.initialize(cfg)는 cfg가 완전히 설정된 후에 호출되어야 합니다.
 }
@@ -49,7 +51,9 @@ void Vda5050Protocol::start()
     {
         while (running_) 
         {
+            // 1초 간격으로 AMR 상태 확인 후, (필요시) 상태 MQTT Publish 처리 로직
             std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 1초마다
+            // 상태 갱신, 이벤트 발생 등 작업 가능
         }
     });
 }
@@ -72,6 +76,75 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 {
     // ... (기존 로직 유지)
     // processVda5050Order(order_json);
+    if (msg.empty() || !amr)
+    {
+        std::cerr << "[Vda5050Protocol] Empty message or AMR pointer null in handleMessage" << std::endl;
+        return;
+    }    
+    
+    try
+    {
+        auto order_json = nlohmann::json::parse(msg);
+
+        if (!order_json.contains("nodes") || !order_json.contains("edges"))
+        {
+            std::cerr << "[Vda5050Protocol] Order message missing nodes or edges" << std::endl;
+            return;
+        }
+
+        // 노드 수집
+        std::vector<NodeInfo> nodes;
+        for (const auto& node : order_json["nodes"])
+        {
+            NodeInfo n;
+            n.nodeId = node.value("nodeId", "");
+            n.sequenceId = node.value("sequenceId", 0);
+            if (node.contains("nodePosition"))
+            {
+                n.x = node["nodePosition"].value("x", 0.0);
+                n.y = node["nodePosition"].value("y", 0.0);
+                n.theta = node["nodePosition"].value("theta", 0.0);
+            }
+            nodes.push_back(n);
+        }
+
+        // 엣지 수집
+        std::vector<EdgeInfo> edges;
+        for (const auto& edge : order_json["edges"])
+        {
+            EdgeInfo e;
+            e.edgeId = edge.value("edgeId", "");
+            e.sequenceId = edge.value("sequenceId", 0);
+            e.startNodeId = edge.value("startNodeId", "");
+            e.endNodeId = edge.value("endNodeId", "");
+            edges.push_back(e);
+        }
+
+        // AMR의 VCU에 노드/엣지 상태 갱신 요청
+        auto vcu = amr->getVcu();
+        if (!vcu)
+        {
+            std::cerr << "[Vda5050Protocol] AMR's VCU pointer is null" << std::endl;
+            return;
+        }
+
+        vcu->updateNodes(nodes);
+        vcu->updateEdges(edges);
+
+        // 필요 시 handle_를 통한 이벤트 전파 가능
+        // 예) handle_->dispatch(...);
+
+        std::cout << "[Vda5050Protocol] Processed order message for AGV '" << agv_id_ << "'" << std::endl;
+    }
+    catch (const nlohmann::json::parse_error& e)
+    {
+        std::cerr << "[Vda5050Protocol] JSON parse error in handleMessage: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Vda5050Protocol] Exception in handleMessage: " << e.what() << std::endl;
+    }
+
 }
 
 std::string Vda5050Protocol::makeStateMessage(IAmr* amr) 
@@ -86,7 +159,7 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     // vda5050pp::events::EventHandle을 통해 dispatch하는 방식이 될 수 있습니다.
 
     // 임시로 빈 문자열 반환 (이 메서드의 존재 목적이 변경될 가능성)
-    return "";
+    return std::string();
 
     // 예시: vda5050pp::Handle에 상태 업데이트를 요청하는 가상의 코드 (실제 API에 따라 다름)
     // auto status_update_event = std::make_shared<vda5050pp::events::AGVStateUpdate>();

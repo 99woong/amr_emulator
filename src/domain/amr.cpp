@@ -19,12 +19,6 @@ void Amr::setOrder(const std::vector<AmrNode>& nodes, const std::vector<AmrEdge>
     }
 }
 
-
-// std::vector<AmrNode> Amr::getNodes() const 
-// { 
-//     return nodes_; 
-// }
-
 std::string Amr::getState() const 
 {
     // if (nodes_.empty()) return "Idle";
@@ -34,22 +28,28 @@ std::string Amr::getState() const
     return "AMR" + std::to_string(id_) + " at node: " + nodes_[cur_idx_].id;
 }
 
+std::vector<AmrNode> Amr::getNodes() const 
+{ 
+    return nodes_; 
+}
+
+std::size_t Amr::getCurIdx() const 
+{
+    return cur_idx_;
+}
+
+IVcu* Amr::getVcu()
+{
+    return vcu_.get();
+}
+
 void Amr::step() 
 {
-    // if (!nodes_.empty() && cur_idx_ + 1 < nodes_.size()) ++cur_idx_;
-    // In a real system, this would involve VCU and Navigation updates
-    // For now, if there's an order, simulate movement through nodes
     if (!nodes_.empty()) 
     {
         vcu_->update();
-
-        // Simulate reaching next node if close enough or after some time
-        // This is a very simplistic step simulation
         if (cur_idx_ + 1 < nodes_.size()) 
         {
-            // Check if VCU has reached its target (simplistic check)
-            // This needs to be much more sophisticated for real navigation
-            // For now, let's just advance the index after a few steps
             static int step_counter = 0;
             if (step_counter % 10 == 0) 
             {

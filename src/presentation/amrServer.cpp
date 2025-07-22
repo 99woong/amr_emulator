@@ -39,36 +39,3 @@ void AmrServerApp::run(const std::string& config_path)
     // Note: In a real application, you would need a mechanism to gracefully
     // stop the `while(true)` loop and call `manager.stopAll()` before exiting.
 }
-
-// #include "amrServer.h"
-// #include "../infrastructure/yamlConfig.h"
-// #include "../app/amrManager.h"
-// #include <thread>
-// #include <chrono>
-// #include <iostream>
-
-// void AmrServerApp::run(const std::string& config_path) 
-// {
-//     AmrConfig config = YamlConfig::load(config_path);
-//     AmrManager manager(config);
-//     manager.startAll();
-
-//     while (true) 
-//     {
-//         auto& amrs = manager.getAmrs();
-//         for (size_t i = 0; i < amrs.size(); ++i)
-//         {
-//            amrs[i]->step();
-           
-//            if (i < manager.protocols_.size()) 
-//            {
-//                 std::cout << "[state] " << manager.protocols_[i]->makeStateMessage(amrs[i].get()) << std::endl;
-//            } 
-//            else 
-//            {
-//                 std::cout << "[state] AMR" << amrs[i]->getState() << " (No protocol attached or invalid index)" << std::endl;
-//            }            
-//         }
-//         std::this_thread::sleep_for(std::chrono::seconds(1));
-//     }    
-// }

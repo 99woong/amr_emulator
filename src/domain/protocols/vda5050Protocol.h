@@ -32,13 +32,17 @@
 class Vda5050Protocol : public IProtocol {
 public:
     Vda5050Protocol();
+
     void setAmr(IAmr* amr);
     void setAgvId(const std::string& agv_id);
     void useDefaultConfig();
+
     void start() override;
     void stop();
 
+    // 메시지 처리 - VDA5050 Order 수신 처리
     void handleMessage(const std::string& msg, IAmr* amr) override;
+    // 현재 AMR 상태를 JSON 문자열로 변환
     std::string makeStateMessage(IAmr* amr) override;
     std::string getProtocolType() const override { return "vda5050"; }
 
@@ -57,42 +61,3 @@ private:
 
     void processVda5050Order(const nlohmann::json& order_json); // Kept for manual parsing if needed
 };
-
-// #pragma once
-// #include "iprotocol.h"
-// #include "iamr.h"
-// #include <vda5050++/handle.h>
-// #include <vda5050++/config.h>
-// // #include <vda5050++/vda5050.h>
-// #include <memory>
-// #include <string>
-// #include <thread>
-// #include <atomic>
-
-// class Vda5050Protocol : public IProtocol {
-// public:
-//     Vda5050Protocol();
-//     void setAmr(IAmr* amr);
-//     void setAgvId(const std::string& agv_id);
-//     void useDefaultConfig();
-//     void start() override;
-//     void stop();
-
-//     void handleMessage(const std::string& msg, IAmr* amr) override;
-//     std::string makeStateMessage(IAmr* amr) override;
-//     std::string getProtocolType() const override { return "vda5050"; }
-
-// private:
-//     IAmr* amr_ = nullptr;
-//     std::string agv_id_;
-//     vda5050pp::Config vda_config_;
-//     std::unique_ptr<vda5050pp::Handle> handle_;
-
-//     std::string order_topic_;
-//     std::string state_topic_;
-
-//     std::thread publish_thread_;
-//     std::atomic<bool> running_;
-
-//     void processVda5050Order(const nlohmann::json& order_json);
-// };
