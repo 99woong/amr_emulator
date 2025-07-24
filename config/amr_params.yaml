@@ -1,6 +1,8 @@
 amr_count: 1
 base_port: 8080
 protocol_type: "vda5050"
+vehicle_type : "differential_driver"
+dead_reckoning_model : "differential_driver"
 amr_params:
   max_speed: 1.2
   # max_acceleration: 0.5
@@ -36,8 +38,5 @@ acceleration_model:
     max_speed : 2.0
     max_acceleration : 1.0
     max_deceleration : 1.5
-vda5050_params:
-  broker: "localhost"
-  port: 1883
 
 

@@ -34,7 +34,9 @@ struct AmrConfig
 {
     int amr_count;
     int base_port;
-    std::string protocol_type;    
+    std::string protocol_type;   
+    std::string vehicle_type;  
+    std::string dead_reckoning_model;  
     AmrParams amr_params;
     ddAccelerationParams dd_acceleration_params;
     // Vda5050Params vda5050params;

@@ -28,15 +28,15 @@ std::string Amr::getState() const
     return "AMR" + std::to_string(id_) + " at node: " + nodes_[cur_idx_].id;
 }
 
-std::vector<AmrNode> Amr::getNodes() const 
-{ 
-    return nodes_; 
-}
+// std::vector<AmrNode> Amr::getNodes() const 
+// { 
+//     return nodes_; 
+// }
 
-std::size_t Amr::getCurIdx() const 
-{
-    return cur_idx_;
-}
+// std::size_t Amr::getCurIdx() const 
+// {
+//     return cur_idx_;
+// }
 
 IVcu* Amr::getVcu()
 {

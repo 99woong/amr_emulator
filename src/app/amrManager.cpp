@@ -1,7 +1,9 @@
 #include "amrManager.h"
-#include "../domain/motorController.h"
-#include "../domain/navigation.h"
-#include "../domain/vcu.h"
+#include "motorController.h"
+#include "navigation.h"
+#include "vcu.h"
+#include "localizer.h"
+#include "deadReckoningModelFactory.h"
 #include <iostream>
 #include <unistd.h>
 
@@ -42,14 +44,30 @@ AmrManager::AmrManager(const AmrConfig& config)
    {
         auto motor = std::make_unique<MotorController>(config);
         auto nav = std::make_unique<Navigation>();
+
+        std::shared_ptr<ideadReckoningModel> dr_model;
+        try 
+        {
+            std::string dr_model_type = config.dead_reckoning_model;
+            dr_model = DeadReckoningModelFactory::create(dr_model_type, config);
+        } 
+        catch (const std::exception& e) 
+        {
+            // std::cerr << "[AmrManager] DeadReckoningModel 생성 실패: " << e.what() << std::endl;
+            // std::cerr << "기본값 differential_drive 모델로 대체합니다." << std::endl;
+            dr_model = DeadReckoningModelFactory::create("differential_drive", config);
+        }
+
         auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(nav));
+
         amrs_.emplace_back(std::make_unique<Amr>(i, std::move(vcu)));
         std::cout << "port : " << config.base_port + i << std::endl;
+        
         auto server = std::make_unique<TcpServer>(config.base_port + i);
         
-        std::string agv_id = "amr_" + std::to_string(i);       
-       
-        if (config.protocol_type == "vda5050") 
+        std::string agv_id = "amr_" + std::to_string(i);
+
+        if (config.protocol_type == "vda5050")
         {
            auto vdaProto = std::make_unique<Vda5050Protocol>();
            vdaProto->setAgvId(agv_id);

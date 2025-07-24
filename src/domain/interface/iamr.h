@@ -16,6 +16,8 @@ struct AmrEdge
     std::string to;
 };
 
+class IVcu;  // 전방 선언
+
 class IAmr {
 public:
     virtual ~IAmr() = default;

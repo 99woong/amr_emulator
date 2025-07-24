@@ -3,6 +3,7 @@
 #include "vda5050Protocol.h"
 #include "NodeEdgeInfo.h"
 #include "iamr.h"
+#include "ivcu.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <vda5050++/config.h>
@@ -32,8 +33,10 @@ void Vda5050Protocol::useDefaultConfig()
     vda_config_.refAgvDescription().manufacturer = "zenix"; // 또는 실제 제조사 이름
     vda_config_.refAgvDescription().serial_number = "AMR_Emulator_001"; // 또는 적절한 시리얼 넘버
     // 필요하다면 다른 설정들도 추가합니다 (예: MQTT broker URL 등)
-    // vda_config_.refBrokerConfig().host = "localhost";
-    // vda_config_.refBrokerConfig().port = 1883;
+    
+    auto& mqtt_conf = vda_config_.refMqttSubConfig();
+    auto& opts = mqtt_conf.refOptions();
+    opts.server = "tcp://localhost:1883"; // 호스트와 포트 포함
 
     // handle 초기화는 config가 완전히 설정된 후에 수행합니다.
     handle_ = std::make_unique<vda5050pp::Handle>();

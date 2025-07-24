@@ -3,6 +3,8 @@
 #include "imotorController.h"
 #include "inavigation.h"
 #include <memory>
+#include <vector>
+
 class Vcu : public IVcu 
 {
 public:
@@ -11,6 +13,9 @@ public:
     void update() override;
     IMotorController& getMotor();
     INavigation& getNavigation();
+
+    void updateNodes(const std::vector<NodeInfo>& nodes) override;
+    void updateEdges(const std::vector<EdgeInfo>& edges) override;    
 private:
     std::unique_ptr<IMotorController> motor_;
     std::unique_ptr<INavigation> navigation_;

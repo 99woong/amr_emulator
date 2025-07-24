@@ -22,9 +22,12 @@ void AmrServerApp::run(const std::string& config_path)
            if (i < manager.getProtocolCount()) // getProtocolCount() 사용
            {
                 IProtocol* currentProtocol = manager.getProtocol(i); // getProtocol() 사용
-                if (currentProtocol) { // nullptr 체크
-                    std::cout << "[state] " << currentProtocol->makeStateMessage(amrs[i].get()) << std::endl;
-                } else {
+                if (currentProtocol) 
+                { // nullptr 체크
+                    std::cout << "[state1] " << currentProtocol->makeStateMessage(amrs[i].get()) << std::endl;
+                } 
+                else 
+                {
                     // 이 경우는 getProtocolCount()가 i보다 크지만 getProtocol(i)이 nullptr을 반환하는 예외적인 상황
                     std::cerr << "[state] Error: Protocol at index " << i << " is null for AMR" << amrs[i]->getState() << std::endl;
                 }
@@ -36,6 +39,4 @@ void AmrServerApp::run(const std::string& config_path)
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }    
-    // Note: In a real application, you would need a mechanism to gracefully
-    // stop the `while(true)` loop and call `manager.stopAll()` before exiting.
 }
