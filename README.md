@@ -2,18 +2,142 @@
 amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성을 모방하여 정교한 시뮬레이션 가능하게 함
 
 # 기대효과
-물리적 AMR 없이, 조기 통합 테스트를 활성화하여 개발 가속화(프로토콜, 운동모델,..)
+- 물리적 AMR 없이, 조기 통합 테스트를 활성화하여 개발 가속화(프로토콜, 운동모델,..)
 
-주요 모듈(통신,제어,센서) 손쉽게 교체함으로써 모듈간 상호 영향없이 빠른 검증 가능
+- 주요 모듈(통신,제어,센서) 손쉽게 교체함으로써 모듈간 상호 영향없이 빠른 검증 가능
 
-행동,센서,배터리 사용량을 정확하게 모델링하여 현실감 높임
+- 행동,센서,배터리 사용량을 정확하게 모델링하여 현실감 높임
 
 
 # Requirement / 기능명세
 ![Diagram](image/amr_emulator_diagram.png)
+## 모듈화 아키텍처 기반으로 설계
+- 각 기능은 독립적인 모듈로 구현되어 모듈 변경 시 다른 모듈에 미치는 영향을 최소화해야 함
+- 유지보수성을 높이고, 특정 모듈의 기능 개선 또는 교체가 용이하도록 함
+  - AMR (Autonomous Mobile Robot): 전반적인 로봇 제어 및 통합 담당
+  - VCU (Vehicle Control Unit): 차량의 구동 및 제어 시스템 담당
+  - Navigator: 경로 계획 및 추종 
+  - Localizer: 현재 로봇 위치 추정 
+  - Motor Controller: 로봇의 속도에 따른 모터 제어
+  - Accelerator: 가속 및 감속 모델 담당
+  - dead reckoning : 로봇의 이번 위치와 현재 센서값으로 현재 위치 예측
 
-# Project Structure
+imotor_controller.h
 ```
+class IMotorController 
+{
+public:
+    virtual ~IMotorController() = default;
+    virtual void setAccelerationModel(std::shared_ptr<AccelerationModel> model) = 0;
+    virtual void setVelocity(double linear, double angular) = 0;
+    virtual void update(double dt) = 0;
+    virtual void getRPM(double& left_rpm, double& right_rpm) const = 0;
+};
+```
+motor_controller.h
+```
+class MotorController : public IMotorController
+{
+public:
+    MotorController(const AmrConfig& config);
+    
+    void setAccelerationModel(std::shared_ptr<AccelerationModel> model) override;
+    void setVelocity(double linear, double angular) override;
+    void update(double dt) override;
+    void getRPM(double& left_rpm, double& right_rpm) const override;
+
+private:
+    std::shared_ptr<AccelerationModel> acceleration_model_;
+
+    double linear_vel_cmd_, angular_vel_cmd_;
+    double linear_vel_actual_, angular_vel_actual_;
+    double left_rpm_, right_rpm_;
+    double wheel_base_, max_speed_, max_angular_speed_, wheel_radius_;
+    double max_accel_, max_angular_accel_;
+
+    void calculateWheelSpeeds(double linear_vel, double angular_vel, double& left_speed, double& right_speed) const;
+    void convertWheelSpeedToRPM(double wheel_speed, double& rpm) const;
+};
+```
+## 차량 물리특성기반 가감속 모델 구현
+-  다양한 AMR 유형에 대한 시뮬레이션 유연성 확보를 위해, 차량종류 및 물리적특성을 파라미터로 로딩하여 현실적인 가감속 모델을 구현
+```
+vehicle_type: "differential_driver"  # 차량 종류 (예: 차동 구동 방식)
+mass_vehicle: 1500.0                # 차량 자체 질량 (kg)
+load_weight: 500.0                  # 적재 중량 (kg)
+max_torque: 0.3                     # 최대 토크 (Nm)
+friction_coeff: 0.015               # 마찰 계수
+max_speed: 2.0                      # 최대 속도 (m/s)
+max_acceleration: 1.0               # 최대 가속도 (m/s^2)
+max_deceleration: 1.5               # 최대 감속도 (m/s^2)
+```
+
+## 차량 종류별 추측 항법 및 노이즈 모델
+- 차량 종류에 맞는 추측 항법(Dead Reckoning) 알고리즘을 적용하고, 실제 센서 오차를 근사화하기 위해 가우시안 노이즈를 추가
+- 이를 통해 보다 현실적인 시뮬레이션 환경을 제공하고, 실제 로봇의 동작을 예측하고 검증 가능
+```
+vehicle_type: "differential_driver"     # 차량 종류
+dead_reckoning_model: "rk4"             # 추측 항법 모델 (예: 룽게-쿠타 4차)
+gaussian_noise_level:                   # 가우시안 노이즈 레벨 (구체적인 값 필요)
+  position_std_dev: 0.01                # 위치 표준 편차 (m)
+  orientation_std_dev: 0.005            # 방향 표준 편차 (rad)
+```
+
+```
+│   │   └── dead_reckoning       # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
+│   │       ├── dead_reckoning_euler.cpp
+│   │       ├── dead_reckoning_euler.h
+│   │       ├── deadReckoningModelFactory.cpp
+│   │       ├── deadReckoningModelFactory.h
+│   │       ├── dead_reckoning_rk2.CPP
+│   │       ├── dead_reckoning_rk2.h
+│   │       ├── dead_reckoning_rk4.cpp
+│   │       ├── dead_reckoning_rk4.h
+│   │       └── idead_reckoning.h
+```
+## 시뮬레이션 배속 기능
+- 개발,테스트과정에서 시뮬레이션 시간을 단축하거나, 특정상황을 더 상세히 분석하기 위해 속도를 조절 필요
+- 에뮬레이터는 시뮬레이션 배속 설정에 따라 내부 동작 속도 조정
+- 시뮬레이션 배속 설정은 YAML 파일을 통해 외부에서 쉽게 지정할 수 있도록 구현
+```
+speedup_ratio: 1
+:
+const double base_dt = 1.0; // 기존 1초 루프
+const double sim_dt = base_dt / config.speedup_ratio; // 배속에 따라 루프주기 단축
+:
+auto& amrs = manager.getAmrs();
+for (size_t i = 0; i < amrs.size(); ++i)
+{
+   amrs[i]->step(sim_dt);
+:
+void Amr::step(double dt) 
+{
+    if (!nodes_.empty()) 
+    {
+        vcu_->update(dt);
+:
+void Vcu::update(double dt) 
+{
+    double left_rpm, right_rpm;
+    motor_->getRPM(left_rpm, right_rpm);
+
+    localizer_->update(left_rpm, right_rpm, dt);
+    
+    double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
+    localizer_->getPose(current_x, current_y, current_theta);
+
+    double linear_vel_cmd = 0.0, angular_vel_cmd = 0.0;
+    navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd);
+
+    motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
+    motor_->update(dt);
+}           
+```
+
+
+```
+
+
 amr_emulator
 ├── config                # 코드 변경 없이 애플리케이션의 동작을 유연하게 제어하기 위한 amr 설정파라메터(yaml, json, xml, ini,..)
 ├── image
