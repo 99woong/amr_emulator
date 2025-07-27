@@ -1,6 +1,6 @@
 #pragma once
 #include <memory> // For std::shared_ptr
-#include "accelerationModel.h" // AccelerationModel 추상 클래스 포함
+#include "acceleration_model.h" // AccelerationModel 추상 클래스 포함
 
 class IMotorController 
 {

@@ -1,9 +1,9 @@
-#include "amrManager.h"
-#include "motorController.h"
+#include "amr_manager.h"
+#include "motor_controller.h"
 #include "navigation.h"
 #include "vcu.h"
 #include "localizer.h"
-#include "deadReckoningModelFactory.h"
+#include "dead_reckoning_model_factory.h"
 #include <iostream>
 #include <unistd.h>
 

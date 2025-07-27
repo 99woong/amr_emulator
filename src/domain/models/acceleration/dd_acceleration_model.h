@@ -1,6 +1,6 @@
 #pragma once
 
-#include "accelerationModel.h" // 추상 클래스 포함
+#include "acceleration_model.h" // 추상 클래스 포함
 #include <string>
 
 class DDAccelerationModel : public AccelerationModel 

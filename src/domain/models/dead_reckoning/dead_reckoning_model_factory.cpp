@@ -1,4 +1,4 @@
-#include "deadReckoningModelFactory.h"
+#include "dead_reckoning_model_factory.h"
 #include <stdexcept>
 #include <iostream>
 

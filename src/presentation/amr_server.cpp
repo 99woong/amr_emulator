@@ -1,6 +1,6 @@
-#include "amrServer.h"
-#include "../infrastructure/yamlConfig.h"
-#include "../app/amrManager.h" // AmrManager 클래스의 올바른 경로로 변경
+#include "amr_server.h"
+#include "yaml_config.h"
+#include "amr_manager.h" // AmrManager 클래스의 올바른 경로로 변경
 #include <thread>
 #include <chrono>
 #include <iostream>

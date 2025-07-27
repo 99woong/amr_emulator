@@ -1,7 +1,7 @@
 // domain/protocols/vda5050Protocol.cpp
 
-#include "vda5050Protocol.h"
-#include "NodeEdgeInfo.h"
+#include "vda5050_protocol.h"
+#include "node_edge_info.h"
 #include "iamr.h"
 #include "ivcu.h"
 #include <iostream>

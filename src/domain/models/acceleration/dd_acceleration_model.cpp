@@ -1,4 +1,4 @@
-#include "ddAccelerationModel.h"
+#include "dd_acceleration_model.h"
 #include <algorithm> // For std::min, std::max, std::clamp
 #include <cmath>     // For std::fabs
 #include <iostream>  // For debugging output

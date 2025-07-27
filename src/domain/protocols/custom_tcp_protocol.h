@@ -1,6 +1,6 @@
 #pragma once
-#include "../interface/iprotocol.h"
-#include "../interface/iamr.h"
+#include "iprotocol.h"
+#include "iamr.h"
 #include <string>
 #include <iostream>
 

@@ -5,15 +5,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
     src 
-    src/domain/interface 
-    src/domain 
-    src/app 
+    src/domain/module/amr
+    src/domain/module/localizer
+    src/domain/module/motor_controller
+    src/domain/module/navigator
+    src/domain/module/vcu
+    src/domain/common
+    src/domain/models/acceleration
+    src/domain/models/dead_reckoning
+    src/domain/protocols
+    src/app
     src/infrastructure 
-    rc/presentation 
+    src/presentation 
     src/utils 
     third_party/yaml-cpp/include
-    third_party/libvda5050pp/include/public
-    third_party/libvda5050pp/include/private/core
+    third_party/libvda5050pp/include/public/vda5050++
+    third_party/libvda5050pp/include/private
     third_party/rapidjson/include
     )
 add_subdirectory(third_party/yaml-cpp)

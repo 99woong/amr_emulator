@@ -1,6 +1,6 @@
 #pragma once
-#include "../infrastructure/yamlConfig.h"
-#include "imotorController.h"
+#include "yaml_config.h"
+#include "imotor_controller.h"
 #include <iostream>
 #include <memory>
 

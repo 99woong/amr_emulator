@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <string>
-#include "../infrastructure/yamlConfig.h"  // 전체 설정 구조체 선언 위치
+#include "yaml_config.h"  // 전체 설정 구조체 선언 위치
 
 #include "idead_reckoning.h"
 #include "dead_reckoning_euler.h"

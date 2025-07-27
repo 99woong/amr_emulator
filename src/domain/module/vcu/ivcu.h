@@ -1,5 +1,5 @@
 #pragma once
-#include "NodeEdgeInfo.h"
+#include "node_edge_info.h"
 #include <vector>
 
 class IVcu 

@@ -1,10 +1,10 @@
 #pragma once
-#include "../domain/amr.h"
-#include "../infrastructure/tcpServer.h"
-#include "../infrastructure/yamlConfig.h"
-#include "../domain/interface/iprotocol.h"
-#include "../domain/protocols/vda5050Protocol.h"
-#include "../domain/protocols/customTcpProtocol.h"
+#include "amr.h"
+#include "tcp_server.h"
+#include "yaml_config.h"
+#include "iprotocol.h"
+#include "vda5050_protocol.h"
+#include "custom_tcp_protocol.h"
 #include <vector>
 #include <memory>
 class AmrManager 
