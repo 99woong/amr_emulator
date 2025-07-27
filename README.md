@@ -6,7 +6,7 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 ![Diagram](image/amr_emulator_diagram.png)
 
 # Project Structure
-src
+'''src
 ├── app
 │   ├── amrManager.cpp
 │   └── amrManager.h
@@ -64,7 +64,7 @@ src
 ├── main.cpp
 └── presentation
     ├── amrServer.cpp
-    └── amrServer.h
+    └── amrServer.h'''
 
 # 설치
 # 사용법
