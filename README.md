@@ -16,6 +16,18 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 │      └─── presentation
 ├──── test
 └──── third_party
+
+├── .lintstagedrc
+├── LICENSE
+├── README.md
+├── action.yml
+├─> build
+├── package-lock.json
+├── package.json
+├── renovate.json
+├─> src
+│   └── index.ts
+└── tsconfig.json
 '''
 # 설치
 # 사용법
