@@ -10,17 +10,17 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 ```
 src
 ├── app
-│   ├── amrManager.cpp                # 여러 AMR 인스턴스, 프로토콜 라우팅, 서버 인스턴스 관리, 전체 시스템의 시작/중지
+│   ├── amrManager.cpp           # 여러 AMR 인스턴스, 프로토콜 라우팅, 서버 인스턴스 관리, 전체 시스템의 시작/중지
 │   └── amrManager.h
 ├── domain
 │   ├── common
 │   │   └── NodeEdgeInfo.h
 │   ├── models    #AMR의 움직임,위치추정,제어 등 AMR자체의 핵심적인 동작방식과 관련된 수학적/물리적 모델 정의
-│   │   ├── acceleration              # 로봇의 물리적 특성이나 환경변화에 따른 가속도 모델을 독립적으로 관리하고 교체 가능  
+│   │   ├── acceleration         # 로봇의 물리적 특성이나 환경변화에 따른 가속도 모델을 독립적으로 관리하고 교체 가능  
 │   │   │   ├── accelerationModel.h
 │   │   │   ├── ddAccelerationModel.cpp
 │   │   │   └── ddAccelerationModel.h
-│   │   └── dead_reckoning            # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
+│   │   └── dead_reckoning       # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
 │   │       ├── dead_reckoning_euler.cpp
 │   │       ├── dead_reckoning_euler.h
 │   │       ├── deadReckoningModelFactory.cpp
