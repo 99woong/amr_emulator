@@ -5,6 +5,18 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 # 기능
 ![Diagram](image/amr_emulator_diagram.png)
 
+# Project Structure
+'''sh
+├──── config
+│      └─── amr_params.yaml   # amr 파라메터파일
+├──── src      
+│      ├─── app
+│      ├─── domain      
+│      ├─── infrastructure
+│      └─── presentation
+├──── test
+└──── third_party
+'''
 # 설치
 # 사용법
 # 테스트
