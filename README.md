@@ -57,14 +57,14 @@ src
 │       ├── iprotocol.h
 │       ├── vda5050Protocol.cpp
 │       └── vda5050Protocol.h
-├── infrastructure
+├── infrastructure    # tcpServer, yamlConfig과 같은 통신방식이나 설정파일형식 변경되더라도 핵심 도메인로직은 안정적으로 유지가능
 │   ├── itcpServer.h
 │   ├── tcpServer.cpp
 │   ├── tcpServer.h
 │   ├── yamlConfig.cpp
 │   └── yamlConfig.h
 ├── main.cpp
-└── presentation
+└── presentation      # 애플리케이션이 외부 세계와 상호작용하는 방식 정의, 실제 GUI, 웹대시보드, REST API 등이 이 계층에 해당
     ├── amrServer.cpp
     └── amrServer.h
 ```
