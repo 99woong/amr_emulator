@@ -10,7 +10,7 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 ```
 src
 ├── app
-│   ├── amrManager.cpp    #단일 AMR 인스턴스의 행동관리 및 상태제공,로봇의 이동 로직 실행
+│   ├── amrManager.cpp    # 여러 AMR 인스턴스, 프로토콜 라우팅, 서버 인스턴스 관리, 전체 시스템의 시작/중지
 │   └── amrManager.h
 ├── domain
 │   ├── common
@@ -20,7 +20,7 @@ src
 │   │   │   ├── accelerationModel.h
 │   │   │   ├── ddAccelerationModel.cpp
 │   │   │   └── ddAccelerationModel.h
-│   │   └── dead_reckoning
+│   │   └── dead_reckoning    # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
 │   │       ├── dead_reckoning_euler.cpp
 │   │       ├── dead_reckoning_euler.h
 │   │       ├── deadReckoningModelFactory.cpp
@@ -31,27 +31,27 @@ src
 │   │       ├── dead_reckoning_rk4.h
 │   │       └── idead_reckoning.h
 │   ├── module
-│   │   ├── amr
+│   │   ├── amr                  #단일 AMR 인스턴스의 행동관리 및 상태제공,로봇의 이동 로직 실행
 │   │   │   ├── amr.cpp
 │   │   │   ├── amr.h
 │   │   │   └── iamr.h
-│   │   ├── localizer
+│   │   ├── localizer            # dead reckoning을 포함하여 더 넓은 의미의 위치결정 로직(필터기반, SLAM,..)
 │   │   │   ├── ilocalizer.h
 │   │   │   ├── localizer.cpp
 │   │   │   └── localizer.h
-│   │   ├── motorContorller
+│   │   ├── motorContorller      #AMR의 모터 구동 및 제어 로직            
 │   │   │   ├── imotorController.h
 │   │   │   ├── motorController.cpp
 │   │   │   └── motorController.h
-│   │   ├── navigator
+│   │   ├── navigator            #AMR이 목표 지점까지 효율적으로 이동할 수 있도록 경로 계획 및 이동 지시를 내리는 로직
 │   │   │   ├── inavigation.h
 │   │   │   ├── navigation.cpp
 │   │   │   └── navigation.h
-│   │   └── vcu
+│   │   └── vcu            # 차량 제어 장치의 역할을 수행합니다. motorController, navigator, localizer 등 하위 모듈들의 기능을 통합하고 조율
 │   │       ├── ivcu.h
 │   │       ├── vcu.cpp
 │   │       └── vcu.h
-│   └── protocols
+│   └── protocols        # AMR과 외부 시스템 간의 통신프로토콜 로직, VDA 5050 및 사용자정의TCP 프로토콜 선택 가능  
 │       ├── customTcpProtocol.cpp
 │       ├── customTcpProtocol.h
 │       ├── iprotocol.h
