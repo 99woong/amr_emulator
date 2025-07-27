@@ -7,6 +7,27 @@
 #include <iostream>
 #include <unistd.h>
 
+// 생성자: 여러 AMR 인스턴스 및 관련 객체 생성 후 초기화
+AmrManager::AmrManager(const AmrConfig& config)
+    : config_(config)
+{
+   for (int i = 0; i < config.amr_count; ++i)
+   {
+        int port = config.base_port + i;
+        std::string agv_id = "amr_" + std::to_string(i);
+
+        auto amr = createSingleAmr(i, config);
+        amrs_.push_back(std::move(amr));
+
+        std::cout << "port : " << port << std::endl;
+
+        auto protocol = createProtocol(config.protocol_type, agv_id, amrs_.back().get());
+        if (protocol)
+            protocols_.push_back(std::move(protocol));
+
+        setupTcpServer(port, i);
+   }
+}
 
 // Helper to check if a message is a VDA 5050 Order message
 bool AmrManager::isVda5050OrderMessage(const std::string& msg) 
@@ -38,88 +59,92 @@ bool AmrManager::isCustomTcpProtocolMessage(const std::string& msg)
     }
 }
 
-AmrManager::AmrManager(const AmrConfig& config)
+// 개별 AMR 생성
+std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config)
 {
-   for (int i = 0; i < config.amr_count; ++i)
-   {
-        auto motor = std::make_unique<MotorController>(config);
-        auto nav = std::make_unique<Navigation>();
+    auto motor = std::make_unique<MotorController>(config);
+    auto navigation = std::make_unique<Navigation>();
 
-        std::shared_ptr<ideadReckoningModel> dr_model;
-        try 
+    std::shared_ptr<ideadReckoningModel> dr_model;
+    try 
+    {
+        dr_model = DeadReckoningModelFactory::create(config.dead_reckoning_model, config);
+    } 
+    catch (const std::exception&) 
+    {
+        dr_model = DeadReckoningModelFactory::create("differential_drive", config);
+    }
+
+    auto localizer = std::make_unique<Localizer>(dr_model);
+    auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(navigation), std::move(localizer));
+
+    return std::make_unique<Amr>(id, std::move(vcu));
+}
+
+// 프로토콜 생성 및 초기화
+std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& agv_id, Amr* amr)
+{
+    if (protocol_type == "vda5050")
+    {
+        auto vdaProto = std::make_unique<Vda5050Protocol>();
+        vdaProto->setAgvId(agv_id);
+        vdaProto->useDefaultConfig();
+        vdaProto->setAmr(amr);
+        std::cout << "[AmrManager] AMR " << agv_id << " configured for VDA 5050 protocol." << std::endl;
+        return vdaProto;
+    }
+    else if(protocol_type == "custom_tcp") 
+    {
+        // custom TCP 프로토콜 초기화 필요시 여기 구현
+        std::cout << "[AmrManager] AMR " << agv_id << " configured for Custom TCP protocol." << std::endl;
+        return nullptr;
+    }
+    else
+    {
+        std::cerr << "[AmrManager] Error: Unknown protocol type '" << protocol_type << "' for AMR " << agv_id 
+                  << ". Defaulting to Custom TCP." << std::endl;
+        return nullptr;
+    }
+}
+
+// TCP 서버 생성 및 명령 핸들러 등록
+void AmrManager::setupTcpServer(int port, int amr_idx)
+{
+    auto server = std::make_unique<TcpServer>(port);
+
+    server->setCommandHandler([this, amr_idx](const std::string& msg) 
+    {
+        if (amr_idx >= protocols_.size()) 
         {
-            std::string dr_model_type = config.dead_reckoning_model;
-            dr_model = DeadReckoningModelFactory::create(dr_model_type, config);
-        } 
-        catch (const std::exception& e) 
-        {
-            // std::cerr << "[AmrManager] DeadReckoningModel 생성 실패: " << e.what() << std::endl;
-            // std::cerr << "기본값 differential_drive 모델로 대체합니다." << std::endl;
-            dr_model = DeadReckoningModelFactory::create("differential_drive", config);
+            std::cerr << "[AmrManager] Error: Protocol handler not found for AMR index " << amr_idx << std::endl;
+            return;
         }
 
-        auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(nav));
-
-        amrs_.emplace_back(std::make_unique<Amr>(i, std::move(vcu)));
-        std::cout << "port : " << config.base_port + i << std::endl;
-        
-        auto server = std::make_unique<TcpServer>(config.base_port + i);
-        
-        std::string agv_id = "amr_" + std::to_string(i);
-
-        if (config.protocol_type == "vda5050")
+        IProtocol* currentProtocol = protocols_[amr_idx].get();
+        if (!currentProtocol) 
         {
-           auto vdaProto = std::make_unique<Vda5050Protocol>();
-           vdaProto->setAgvId(agv_id);
-           vdaProto->useDefaultConfig();
-           vdaProto->setAmr(amrs_.back().get());
-           protocols_.push_back(std::move(vdaProto));
-           std::cout << "[AmrManager] AMR " << agv_id << " configured for VDA 5050 protocol." << std::endl;
-       } 
-       else if(config.protocol_type == "custom_tcp") 
-       {
-        //    auto customProto = std::make_unique<CustomTcpProtocol>();
-        //    customProto->setAmr(amrs_.back().get());
-        //    protocols_.push_back(std::move(customProto));
-           std::cout << "[AmrManager] AMR " << agv_id << " configured for Custom TCP protocol." << std::endl;
-       } 
-       else
-       {
-           std::cerr << "[AmrManager] Error: Unknown protocol type '" << config.protocol_type << "' for AMR " << agv_id << ". Defaulting to Custom TCP." << std::endl;
-        //    auto customProto = std::make_unique<CustomTcpProtocol>();
-        //    customProto->setAmr(amrs_.back().get());
-        //    protocols_.push_back(std::move(customProto));
-       }
+            std::cerr << "[AmrManager] Error: Protocol pointer is null for AMR index " << amr_idx << std::endl;
+            return;
+        }
 
-       int idx = i;
-       server->setCommandHandler([this, idx](const std::string& msg) 
-       {
-            if (idx < protocols_.size())
-            {
-                IProtocol* currentProtocol = protocols_[idx].get();
-                // Check message type and then route to the correct handler
-                if (currentProtocol->getProtocolType() == "vda5050" && isVda5050OrderMessage(msg)) 
-                {
-                    // For VDA 5050, orders are typically via MQTT. If it comes via TCP, it's a warning.
-                    std::cerr << "[AmrManager] Warning: VDA 5050 order message received via TCP. Expected MQTT. For AMR " << amrs_[idx]->getState() << std::endl;
-                    currentProtocol->handleMessage(msg, amrs_[idx].get());
-                } 
-                else if (currentProtocol->getProtocolType() == "custom_tcp" && isCustomTcpProtocolMessage(msg)) \
-                {
-                    // currentProtocol->handleMessage(msg, amrs_[idx].get());
-                } 
-                else 
-                {
-                    std::cerr << "[AmrManager] Error: Mismatch between configured protocol and received message type for AMR " << amrs_[idx]->getState() << ". Ignoring message: " << msg.substr(0, std::min((size_t)100, msg.length())) << "..." << std::endl;
-                }
-            } 
-            else 
-            {
-                std::cerr << "[AmrManager] Error: Protocol handler not found for AMR index " << idx << std::endl;
-            }
-       });
-       servers_.push_back(std::move(server));
-   }
+        if (currentProtocol->getProtocolType() == "vda5050" && isVda5050OrderMessage(msg))
+        {
+            std::cerr << "[AmrManager] Warning: VDA 5050 order message received via TCP. Expected MQTT. For AMR " 
+                      << amrs_[amr_idx]->getState() << std::endl;
+            currentProtocol->handleMessage(msg, amrs_[amr_idx].get());
+        }
+        else if (currentProtocol->getProtocolType() == "custom_tcp" && isCustomTcpProtocolMessage(msg))
+        {
+            // currentProtocol->handleMessage(msg, amrs_[amr_idx].get());
+        }
+        else
+        {
+            std::cerr << "[AmrManager] Error: Mismatch between configured protocol and incoming message for AMR " 
+                      << amrs_[amr_idx]->getState() << ". Ignoring message: " << msg.substr(0, std::min((size_t)100, msg.length())) << "..." << std::endl;
+        }
+    });
+
+    servers_.push_back(std::move(server));
 }
 
 void AmrManager::startAll() 

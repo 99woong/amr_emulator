@@ -11,12 +11,15 @@ void AmrServerApp::run(const std::string& config_path)
     AmrManager manager(config);
     manager.startAll();
 
+    const double base_dt = 1.0; // 기존 1초 루프
+    const double sim_dt = base_dt / config.speedup_ratio; // 배속에 따라 루프주기 단축
+    
     while (true) 
     {
         auto& amrs = manager.getAmrs();
         for (size_t i = 0; i < amrs.size(); ++i)
         {
-           amrs[i]->step();
+           amrs[i]->step(sim_dt);
            
            // 수정된 부분: protocols_ 멤버에 직접 접근하는 대신 public 메서드 사용
            if (i < manager.getProtocolCount()) // getProtocolCount() 사용
@@ -37,6 +40,6 @@ void AmrServerApp::run(const std::string& config_path)
                 std::cout << "[state] AMR" << amrs[i]->getState() << " (No protocol attached or invalid index)" << std::endl;
            }            
         }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::duration<double>(sim_dt));
     }    
 }

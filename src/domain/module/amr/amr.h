@@ -15,7 +15,7 @@ public:
     std::string getState() const override;
     std::vector<AmrNode> getNodes() const override { return nodes_; }
     std::size_t getCurIdx() const override { return cur_idx_; }
-    void step() override;
+    void step(double dt) override;
 
     IVcu* getVcu() override;  
 private:

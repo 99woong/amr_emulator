@@ -1,16 +1,17 @@
 #pragma once
+#include <memory>
 #include "ilocalizer.h"
+#include "idead_reckoning.h"  
 
 class Localizer : public ILocalizer 
 {
 public:
-    Localizer(double wheel_base, double wheel_radius);
+    explicit Localizer(std::shared_ptr<ideadReckoningModel> dr_model);
 
     void setInitialPose(double x, double y, double theta) override;
     void update(double left_rpm, double right_rpm, double dt) override;
     void getPose(double& x, double& y, double& theta) const override;
 
 private:
-    double x_, y_, theta_;
-    double wheel_base_, wheel_radius_;
+    std::shared_ptr<ideadReckoningModel> dr_model_;
 };

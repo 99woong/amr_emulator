@@ -37,6 +37,7 @@ struct AmrConfig
     std::string protocol_type;   
     std::string vehicle_type;  
     std::string dead_reckoning_model;  
+    double speedup_ratio = 1.0;
     AmrParams amr_params;
     ddAccelerationParams dd_acceleration_params;
     // Vda5050Params vda5050params;

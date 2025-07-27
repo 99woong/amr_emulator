@@ -69,27 +69,6 @@ void MotorController::update(double dt)
               << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
               << "Left RPM: " << left_rpm_ << ", "
               << "Right RPM: " << right_rpm_ << std::endl;
-
-    // double dt = 0.1; // [s], 주기
-    // double linear_delta = linear_vel_cmd_ - linear_vel_actual_;
-    // double linear_step = std::clamp(linear_delta, -max_accel_ * dt, max_accel_ * dt);
-    // linear_vel_actual_ += linear_step;
-
-    // double angular_delta = angular_vel_cmd_ - angular_vel_actual_;
-    // double angular_step = std::clamp(angular_delta, -max_angular_accel_ * dt, max_angular_accel_ * dt);
-    // angular_vel_actual_ += angular_step;
-
-    // // v_left  = v - (w * L / 2)
-    // // v_right = v + (w * L / 2)
-    // double v_l = linear_vel_actual_ - (angular_vel_actual_ * wheel_base_ / 2.0);
-    // double v_r = linear_vel_actual_ + (angular_vel_actual_ * wheel_base_ / 2.0);
-
-    // cout << "v_l : " << v_l << "v_r : " << v_r << endl; 
-    // // rpm = (v / (2 * PI * r)) * 60
-    // left_rpm_ = (v_l / (2 * PI * wheel_radius_)) * 60.0;
-    // right_rpm_ = (v_r / (2 * PI * wheel_radius_)) * 60.0;    
-
-
 }
 
 void MotorController::getRPM(double& left_rpm, double& right_rpm) const 

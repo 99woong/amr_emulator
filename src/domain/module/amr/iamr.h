@@ -25,7 +25,7 @@ public:
     virtual std::string getState() const = 0;
     virtual std::vector<AmrNode> getNodes() const = 0;
     virtual std::size_t getCurIdx() const = 0;
-    virtual void step() = 0;
+    virtual void step(double dt) = 0;
 
     virtual IVcu* getVcu() = 0;  // VCU 접근용 인터페이스
 };

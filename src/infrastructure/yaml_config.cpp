@@ -40,6 +40,16 @@ AmrConfig YamlConfig::load(const std::string& filename)
         cfg.dd_acceleration_params.max_deceleration = config["dd_acceleration_params"]["max_deceleration"].as<double>();
         cfg.dd_acceleration_params.max_angular_acceleration = config["dd_acceleration_params"]["max_angular_acceleration"].as<double>();
         cfg.dd_acceleration_params.max_angular_deceleration = config["dd_acceleration_params"]["max_angular_deceleration"].as<double>();
-    }    
+    }  
+    
+    if(config["speedup_ratio"])
+    {
+        cfg.speedup_ratio = config["speedup_ratio"].as<double>();
+    }
+    else
+    {
+        cfg.speedup_ratio  = 1.0;
+    }
+
     return cfg;
 }

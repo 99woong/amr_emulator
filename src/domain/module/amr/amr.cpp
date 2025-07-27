@@ -43,11 +43,11 @@ IVcu* Amr::getVcu()
     return vcu_.get();
 }
 
-void Amr::step() 
+void Amr::step(double dt) 
 {
     if (!nodes_.empty()) 
     {
-        vcu_->update();
+        vcu_->update(dt);
         if (cur_idx_ + 1 < nodes_.size()) 
         {
             static int step_counter = 0;
