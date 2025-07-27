@@ -47,7 +47,7 @@ src
 │   │   │   ├── inavigation.h
 │   │   │   ├── navigation.cpp
 │   │   │   └── navigation.h
-│   │   └── vcu                  # 차량 제어 장치의 역할을 수행합니다. motorController, navigator, localizer 등 하위 모듈들의 기능을 통합하고 조율
+│   │   └── vcu                  # 차량제어 수행. motorController,navigator,localizer 등 하위 모듈기능을 통합 조율
 │   │       ├── ivcu.h
 │   │       ├── vcu.cpp
 │   │       └── vcu.h
