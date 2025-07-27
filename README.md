@@ -3,7 +3,7 @@ AMR 에뮬레이터는 자율이동로봇(AMR)의 동작을 가상환경에서 �
 
 AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으로써 보다 현실적이고 정교한 시뮬레이션 가능
 
-# 기능
+# Requirement / 기능명세
 ![Diagram](image/amr_emulator_diagram.png)
 
 # Project Structure
