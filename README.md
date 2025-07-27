@@ -7,27 +7,67 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 
 # Project Structure
 '''sh
-├──── config
-│      └─── amr_params.yaml   # amr 파라메터파일
-├──── src      
-│      ├─── app
-│      ├─── domain      
-│      ├─── infrastructure
-│      └─── presentation
-├──── test
-└──── third_party
+src
+├── app
+│   ├── amrManager.cpp
+│   └── amrManager.h
+├── domain
+│   ├── common
+│   │   └── NodeEdgeInfo.h
+│   ├── models
+│   │   ├── acceleration
+│   │   │   ├── accelerationModel.h
+│   │   │   ├── ddAccelerationModel.cpp
+│   │   │   └── ddAccelerationModel.h
+│   │   └── dead_reckoning
+│   │       ├── dead_reckoning_euler.cpp
+│   │       ├── dead_reckoning_euler.h
+│   │       ├── deadReckoningModelFactory.cpp
+│   │       ├── deadReckoningModelFactory.h
+│   │       ├── dead_reckoning_rk2.CPP
+│   │       ├── dead_reckoning_rk2.h
+│   │       ├── dead_reckoning_rk4.cpp
+│   │       ├── dead_reckoning_rk4.h
+│   │       └── idead_reckoning.h
+│   ├── module
+│   │   ├── amr
+│   │   │   ├── amr.cpp
+│   │   │   ├── amr.h
+│   │   │   └── iamr.h
+│   │   ├── localizer
+│   │   │   ├── ilocalizer.h
+│   │   │   ├── localizer.cpp
+│   │   │   └── localizer.h
+│   │   ├── motorContorller
+│   │   │   ├── imotorController.h
+│   │   │   ├── motorController.cpp
+│   │   │   └── motorController.h
+│   │   ├── navigator
+│   │   │   ├── inavigation.h
+│   │   │   ├── navigation.cpp
+│   │   │   └── navigation.h
+│   │   └── vcu
+│   │       ├── ivcu.h
+│   │       ├── vcu.cpp
+│   │       └── vcu.h
+│   └── protocols
+│       ├── customTcpProtocol.cpp
+│       ├── customTcpProtocol.h
+│       ├── iprotocol.h
+│       ├── vda5050Protocol.cpp
+│       └── vda5050Protocol.h
+├── infrastructure
+│   ├── itcpServer.h
+│   ├── tcpServer.cpp
+│   ├── tcpServer.h
+│   ├── yamlConfig.cpp
+│   └── yamlConfig.h
+├── main.cpp
+└── presentation
+    ├── amrServer.cpp
+    └── amrServer.h
 
-├── .lintstagedrc
-├── LICENSE
-├── README.md
-├── action.yml
-├─> build
-├── package-lock.json
-├── package.json
-├── renovate.json
-├─> src
-│   └── index.ts
-└── tsconfig.json
+
 '''
 # 설치
 # 사용법
