@@ -9,16 +9,16 @@ AMR의 실제동작(구동부가감속,센서,배터리소모)을 모방함으�
 # Project Structure
 ```
 amr_emulator
-├── config
+├── config                # 코드 변경 없이 애플리케이션의 동작을 유연하게 제어하기 위한 amr 설정파라메터(yaml, json, xml, ini,..)
 ├── image
-├── src
-│   ├── app
-│   ├── domain
-│   ├── infrastructure
-│   └── presentation
-├── test
+├── src                   # amr 애플리케이션의 모든 소스 코드를 포함하는 핵심 디렉토리
+│   ├── app                    # domain계층 로직들을 활용, 특정 use case 또는 애플리케이션의 흐름 정의
+│   ├── domain                 # 프로젝트의 가장 핵심적인 부분, AMR 에뮬레이터가 "무엇을 하는지"에 대한 순수한 비즈니스 로직과 데이터 모델 관리   
+│   ├── infrastructure         # 애플리케이션을 구동하는 데 필요한 외부 시스템(DB, 네트워크, 설정 로딩) 담당
+│   └── presentation           # 애플리케이션이 사용자 또는 외부 시스템에 보여주는 방식을 담당(GUI, 웹대시보드, REST API,..) 
+├── test                  # amr_emulator 프로젝트내의 각 기능별 테스트 코드 관리
 │   └── fms_test
-└── third_party
+└── third_party           # 프로젝트에서 사용되는 외부 라이브러리 및 종속성의 소스코드나 바이너리 파일 관리
     ├── libvda5050pp
     └── yaml-cpp
 ```
@@ -73,14 +73,14 @@ src
 │       ├── iprotocol.h
 │       ├── vda5050Protocol.cpp
 │       └── vda5050Protocol.h
-├── infrastructure    # tcpServer, yamlConfig과 같은 통신방식이나 설정파일형식 변경되더라도 핵심 도메인로직은 안정적으로 유지가능
+├── infrastructure    
 │   ├── itcpServer.h
 │   ├── tcpServer.cpp
 │   ├── tcpServer.h
 │   ├── yamlConfig.cpp
 │   └── yamlConfig.h
 ├── main.cpp
-└── presentation      # 애플리케이션이 외부 세계와 상호작용하는 방식 정의, 실제 GUI, 웹대시보드, REST API 등이 이 계층에 해당
+└── presentation      
     ├── amrServer.cpp
     └── amrServer.h
 ```
