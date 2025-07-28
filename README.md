@@ -12,7 +12,6 @@ amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성�
 
 
 # Requirement / 기능명세
-![Diagram](image/amr_emulator_diagram.png)
 ## 모듈화 아키텍처 기반으로 설계
 - 각 기능은 독립적인 모듈로 구현되어 모듈 변경 시 다른 모듈에 미치는 영향을 최소화해야 함
 - 유지보수성을 높이고, 특정 모듈의 기능 개선 또는 교체가 용이하도록 함
@@ -23,6 +22,8 @@ amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성�
   - Motor Controller: 로봇의 속도에 따른 모터 제어
   - Accelerator: 가속 및 감속 모델 담당
   - dead reckoning : 로봇의 이번 위치와 현재 센서값으로 현재 위치 예측
+    
+![Diagram](image/amr_emulator_diagram.png)
 
 imotor_controller.h
 ```
