@@ -7,11 +7,13 @@ Vcu::Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> n
 
 }
 
-void Vcu::setTargetPosition(double x, double y) 
+void Vcu::setTargetPosition(double x, double y, double theta)
 {
-    target_x_ = x; 
+    target_x_ = x;
     target_y_ = y;
-    navigation_->setTarget(x, y);
+    target_theta_ = theta;  // 목표 방향 추가 저장
+    navigation_->setTarget(x, y, theta);
+    std::cout << "[VCU] Target position set to (" << x << ", " << y << "), theta=" << theta << std::endl;
 }
 
 void Vcu::update(double dt) 

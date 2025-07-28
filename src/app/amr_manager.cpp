@@ -1,4 +1,5 @@
 #include "amr_manager.h"
+#include "dd_acceleration_model.h" 
 #include "motor_controller.h"
 #include "navigation.h"
 #include "vcu.h"
@@ -17,6 +18,18 @@ AmrManager::AmrManager(const AmrConfig& config)
         std::string agv_id = "amr_" + std::to_string(i);
 
         auto amr = createSingleAmr(i, config);
+
+        // 초기 위치 설정 (예: YAML config 선언 값 또는 하드코딩)
+        double init_x = 0.0, init_y = 0.0, init_theta = 0.0;
+        
+        // if (!config.initial_poses.empty() && i < config.initial_poses.size()) 
+        
+        //     init_x = config.initial_poses[i].x;
+        //     init_y = config.initial_poses[i].y;
+        //     init_theta = config.initial_poses[i].theta;
+        // }
+        amr->getVcu()->setInitialPose(init_x, init_y, init_theta);
+
         amrs_.push_back(std::move(amr));
 
         std::cout << "port : " << port << std::endl;
@@ -35,11 +48,17 @@ bool AmrManager::isVda5050OrderMessage(const std::string& msg)
     try 
     {
         nlohmann::json j = nlohmann::json::parse(msg);
-        // Basic check for VDA 5050 Order fields
-        return j.contains("headerId") && j.contains("timestamp") && j.contains("orderId") && j.contains("nodes");
+        // 필수 필드 존재 + nodes 배열 확인
+        return j.contains("headerId")
+            && j.contains("timestamp")
+            && j.contains("orderId")
+            && j.contains("nodes")
+            && j["nodes"].is_array()
+            && !j["nodes"].empty();
     } 
     catch (const nlohmann::json::parse_error& e) 
     {
+        std::cerr << "[isVda5050OrderMessage] JSON parse error: " << e.what() << std::endl;
         return false;
     }
 }
@@ -63,6 +82,24 @@ bool AmrManager::isCustomTcpProtocolMessage(const std::string& msg)
 std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config)
 {
     auto motor = std::make_unique<MotorController>(config);
+
+    // 2) DDAccelerationModel 생성 및 초기화
+    //    config 내에 필요한 파라미터가 있다고 가정 (yaml 등을 통해 로드됨)
+    auto acc_model = std::make_shared<DDAccelerationModel>(
+        config.amr_params.mass_vehicle,
+        config.amr_params.load_weight,
+        config.amr_params.max_torque,
+        config.amr_params.friction_coeff,
+        config.amr_params.max_speed,
+        config.amr_params.max_acceleration,
+        config.amr_params.max_deceleration,
+        config.amr_params.wheel_radius,                // 휠 반경은 amr_params에 있으므로 따로 넘김
+        config.amr_params.max_angular_acceleration,
+        config.amr_params.max_angular_deceleration
+    );
+    // 3) MotorController에 가속도 모델 주입
+    motor->setAccelerationModel(acc_model);
+
     auto navigation = std::make_unique<Navigation>();
 
     std::shared_ptr<ideadReckoningModel> dr_model;
@@ -114,6 +151,8 @@ void AmrManager::setupTcpServer(int port, int amr_idx)
 
     server->setCommandHandler([this, amr_idx](const std::string& msg) 
     {
+        std::cout << "[TCP Server] Received message on port for AMR " << amr_idx << ":\n" << msg << std::endl;
+
         if (amr_idx >= protocols_.size()) 
         {
             std::cerr << "[AmrManager] Error: Protocol handler not found for AMR index " << amr_idx << std::endl;
@@ -127,10 +166,14 @@ void AmrManager::setupTcpServer(int port, int amr_idx)
             return;
         }
 
+        std::cout << "[TCP Received] size: " << msg.size() << ", content:\n" << msg << std::endl;   
+
         if (currentProtocol->getProtocolType() == "vda5050" && isVda5050OrderMessage(msg))
         {
-            std::cerr << "[AmrManager] Warning: VDA 5050 order message received via TCP. Expected MQTT. For AMR " 
-                      << amrs_[amr_idx]->getState() << std::endl;
+            std::cout << "[AmrManager] Forwarding VDA5050 Order message to protocol handler for AMR " << amrs_[amr_idx]->getState() << std::endl;
+            
+            // std::cerr << "[AmrManager] Warning: VDA 5050 order message received via TCP. Expected MQTT. For AMR " << amrs_[amr_idx]->getState() << std::endl;
+            
             currentProtocol->handleMessage(msg, amrs_[amr_idx].get());
         }
         else if (currentProtocol->getProtocolType() == "custom_tcp" && isCustomTcpProtocolMessage(msg))

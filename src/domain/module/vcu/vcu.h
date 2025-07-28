@@ -11,7 +11,7 @@ class Vcu : public IVcu
 public:
     Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> nav, std::unique_ptr<ILocalizer> localizer);
     
-    void setTargetPosition(double x, double y) override;
+    void setTargetPosition(double x, double y, double theta) override;
     void update(double dt) override;
     void updateNodes(const std::vector<NodeInfo>& nodes) override;
     void updateEdges(const std::vector<EdgeInfo>& edges) override;
@@ -28,4 +28,5 @@ private:
     std::unique_ptr<INavigation> navigation_;
     std::unique_ptr<ILocalizer> localizer_;
     double target_x_, target_y_;
+    double target_theta_;
 };

@@ -26,12 +26,14 @@
 #include <thread>
 #include <atomic>
 #include <list> // Required for list in BaseNavigationHandler
+#include <mqtt/async_client.h>
 
 // Forward declaration for MyNavigationHandler or define it directly in .cpp
 
 class Vda5050Protocol : public IProtocol {
 public:
     Vda5050Protocol();
+    ~Vda5050Protocol();
 
     void setAmr(IAmr* amr);
     void setAgvId(const std::string& agv_id);
@@ -49,9 +51,29 @@ public:
 private:
     IAmr* amr_ = nullptr;
     std::string agv_id_;
+
+    std::string mqtt_server_uri_ = "tcp://localhost:1883";
+
     vda5050pp::Config vda_config_;
     std::unique_ptr<vda5050pp::Handle> handle_;
     std::shared_ptr<vda5050pp::handler::BaseNavigationHandler> navigation_handler_; // Added for navigation handling
+
+    std::unique_ptr<mqtt::async_client> mqtt_client_;
+    mqtt::connect_options conn_opts_;
+
+    void mqttSubscribe();
+
+    class Vda5050MqttCallback : public virtual mqtt::callback
+    {
+    public:
+        Vda5050MqttCallback(Vda5050Protocol* proto) : proto_(proto) {}
+        void message_arrived(mqtt::const_message_ptr msg) override;
+
+    private:
+        Vda5050Protocol* proto_;
+    };
+
+    std::shared_ptr<Vda5050MqttCallback> mqtt_callback_;
 
     std::string order_topic_;
     std::string state_topic_;

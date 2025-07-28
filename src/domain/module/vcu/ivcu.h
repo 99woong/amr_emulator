@@ -6,7 +6,7 @@ class IVcu
 {
 public:
     virtual ~IVcu() = default;
-    virtual void setTargetPosition(double x, double y) = 0;
+    virtual void setTargetPosition(double x, double y, double theta) = 0;
     virtual void update(double dt) = 0;
 
     virtual void updateNodes(const std::vector<NodeInfo>& nodes) = 0;
