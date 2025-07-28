@@ -42,7 +42,81 @@ max_deceleration: 1.5               # 최대 감속도 (m/s^2)
   - dead reckoning : 로봇의 이번 위치와 현재 센서값으로 현재 위치 예측
     
 ![Diagram](image/amr_emulator_diagram.png)
+```
+amr_emulator
+├── config                # 코드 변경 없이 애플리케이션의 동작을 유연하게 제어하기 위한 amr 설정파라메터(yaml, json, xml, ini,..)
+├── image
+├── src                   # amr 애플리케이션의 모든 소스 코드를 포함하는 핵심 디렉토리
+│   ├── app                    # domain계층 로직들을 활용, 특정 use case 또는 애플리케이션의 흐름 정의
+│   ├── domain                 # 프로젝트의 가장 핵심적인 부분, 에뮬레이터가 "무엇을 하는지"에 대한 순수한 로직과 데이터 모델 관리   
+│   ├── infrastructure         # 애플리케이션을 구동하는 데 필요한 외부 시스템(DB, 네트워크, 설정 로딩) 담당
+│   └── presentation           # 애플리케이션이 사용자 또는 외부 시스템에 보여주는 방식을 담당(GUI, 웹대시보드, REST API,..) 
+├── test                  # amr_emulator 프로젝트내의 각 기능별 테스트 코드 관리
+│   └── fms_test
+└── third_party           # 프로젝트에서 사용되는 외부 라이브러리 및 종속성의 소스코드나 바이너리 파일 관리
+    ├── libvda5050pp
+    └── yaml-cpp
+```
 
+```
+src
+├── app
+│   ├── amrManager.cpp           # 여러 AMR 인스턴스, 프로토콜 라우팅, 서버 인스턴스 관리, 전체 시스템의 시작/중지
+│   └── amrManager.h
+├── domain
+│   ├── common
+│   │   └── NodeEdgeInfo.h
+│   ├── models    #AMR의 움직임,위치추정,제어 등 AMR자체의 핵심적인 동작방식과 관련된 수학적/물리적 모델 정의
+│   │   ├── acceleration         # 로봇의 물리적 특성이나 환경변화에 따른 가속도 모델을 독립적으로 관리하고 교체 가능  
+│   │   │   ├── accelerationModel.h
+│   │   │   ├── ddAccelerationModel.cpp
+│   │   │   └── ddAccelerationModel.h
+│   │   └── dead_reckoning       # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
+│   │       ├── dead_reckoning_euler.cpp
+│   │       ├── dead_reckoning_euler.h
+│   │       ├── deadReckoningModelFactory.cpp
+│   │       ├── deadReckoningModelFactory.h
+│   │       ├── dead_reckoning_rk4.cpp
+│   │       ├── dead_reckoning_rk4.h
+│   │       └── idead_reckoning.h
+│   ├── modules
+│   │   ├── amr                  # 단일 AMR 인스턴스의 행동관리 및 상태제공,로봇의 이동 로직 실행
+│   │   │   ├── amr.cpp
+│   │   │   ├── amr.h
+│   │   │   └── iamr.h
+│   │   ├── localizer            # dead reckoning을 포함하여 더 넓은 의미의 위치결정 로직(필터기반, SLAM,..)
+│   │   │   ├── ilocalizer.h
+│   │   │   ├── localizer.cpp
+│   │   │   └── localizer.h
+│   │   ├── motorContorller      # AMR의 모터 구동 및 제어 로직            
+│   │   │   ├── imotorController.h
+│   │   │   ├── motorController.cpp
+│   │   │   └── motorController.h
+│   │   ├── navigator            # AMR이 목표 지점까지 효율적으로 이동할 수 있도록 경로 계획 및 이동 지시를 내리는 로직
+│   │   │   ├── inavigation.h
+│   │   │   ├── navigation.cpp
+│   │   │   └── navigation.h
+│   │   └── vcu                  # 차량제어 수행. motorController,navigator,localizer 등 하위 모듈기능을 통합 조율
+│   │       ├── ivcu.h
+│   │       ├── vcu.cpp
+│   │       └── vcu.h
+│   └── protocols        # AMR과 외부 시스템 간의 통신프로토콜 로직, VDA 5050 및 사용자정의TCP 프로토콜 선택 가능  
+│       ├── customTcpProtocol.cpp
+│       ├── customTcpProtocol.h
+│       ├── iprotocol.h
+│       ├── vda5050Protocol.cpp
+│       └── vda5050Protocol.h
+├── infrastructure    
+│   ├── itcpServer.h
+│   ├── tcpServer.cpp
+│   ├── tcpServer.h
+│   ├── yamlConfig.cpp
+│   └── yamlConfig.h
+├── main.cpp
+└── presentation      
+    ├── amrServer.cpp
+    └── amrServer.h
+```
 
 
 ## 차량 종류별 추측 항법 및 노이즈 모델
@@ -62,12 +136,13 @@ gaussian_noise_level:                   # 가우시안 노이즈 레벨 (구체�
 │   │       ├── dead_reckoning_euler.h
 │   │       ├── deadReckoningModelFactory.cpp
 │   │       ├── deadReckoningModelFactory.h
-│   │       ├── dead_reckoning_rk2.CPP
-│   │       ├── dead_reckoning_rk2.h
 │   │       ├── dead_reckoning_rk4.cpp
 │   │       ├── dead_reckoning_rk4.h
 │   │       └── idead_reckoning.h
 ```
+![Diagram](image/dr_euler.png)
+![Diagram](image/dr_rk4.png)
+![Diagram](image/dr_rk4_2.png)
 ## 시뮬레이션 배속 기능
 - 개발,테스트과정에서 시뮬레이션 시간을 단축하거나, 특정상황을 더 상세히 분석하기 위해 속도를 조절 필요
 - 에뮬레이터는 시뮬레이션 배속 설정에 따라 내부 동작 속도 조정
@@ -106,87 +181,86 @@ void Vcu::update(double dt)
     motor_->update(dt);
 }           
 ```
+## FMS 통신 프로토콜(VDA 5050 & Custom TCP)선택 지원
+- FMS(Fleet Management System)와의 통신 프로토콜을 VDA 5050과 Custom TCP 중 선택적으로 사용할 수 있는 유연성 제공
+- 파라메터 변경으로 손쉽게 교체 가능
+```
+protocol_type: "vda5050"  # "custom_tcp"
+```
+## 빌드 없이 YAML 파일로 로봇 파라미터 즉시 변경! 효율적인 테스트 환경 구축
+- 로봇시스템 개발 및 최적화 과정에서 발생하는 시간과 비용을 획기적으로 절감하도록 빌드과정없이 파라메터 변경하여 테스트 가능
 
+amr_params.yaml
+```
+amr_count: 1
+base_port: 8080
+speedup_ratio: 1
+protocol_type: "vda5050"  # "custom_tcp"
+vehicle_type : "differential_drive"
+dead_reckoning_model : "differential_drive"
+amr_params:
+  mass_vehicle : 100.0
+  load_weight : 20.0
+  max_torque : 20
+  friction_coeff : 0.05 
+  max_speed : 2.0
+  max_angular_speed: 1.0
+  max_acceleration : 1.5
+  max_deceleration : 2.0
+  max_angular_acceleration: 1.0
+  max_angular_deceleration: 1.5
+  wheel_base: 0.52
+  wheel_radius: 0.078
+  turning_radius_min: 0.8
+  obstacle_avoidance: true
+  goal_tolerance: 0.05
+  waypoint_tolerance: 0.1
+  initial_pose: [0.0, 0.0, 0.0]
+  control_frequency: 20
+  safety_stop_distance: 0.2
+  emergency_stop_enabled: true
+  reverse_allowed: false
+  command_timeout: 5
+  response_timeout: 2
+  log_level: "info"
+  battery_capacity: 40
+  payload_max: 100
+  sensor_used:
+    lidar: true
+```
+## 다수 로봇 에뮬레이션으로 복잡한 플릿환경에서 정교한 검증 가능
+- 파라메터를 통해서 로봇 수량 조정 가능
+```
+amr_count: 1
+```
+```
+AmrManager::AmrManager(const AmrConfig& config)
+    : config_(config)
+{
+   for (int i = 0; i < config.amr_count; ++i)
+   {
+        int port = config.base_port + i;
+        std::string agv_id = "amr_" + std::to_string(i);
+        auto amr = createSingleAmr(i, config);
+        double init_x = 0.0, init_y = 0.0, init_theta = 0.0;
+        if (!config.initial_poses.empty() && i < config.initial_poses.size()) 
+        {
+            init_x = config.initial_poses[i].x;
+            init_y = config.initial_poses[i].y;
+            init_theta = config.initial_poses[i].theta;
+        }
+        amr->getVcu()->setInitialPose(init_x, init_y, init_theta);
+        amrs_.push_back(std::move(amr));
+        std::cout << "port : " << port << std::endl;
+        auto protocol = createProtocol(config.protocol_type, agv_id, amrs_.back().get());
+        if (protocol)
+            protocols_.push_back(std::move(protocol));
+        setupTcpServer(port, i);
+   }
+}
 
 ```
-
-
-amr_emulator
-├── config                # 코드 변경 없이 애플리케이션의 동작을 유연하게 제어하기 위한 amr 설정파라메터(yaml, json, xml, ini,..)
-├── image
-├── src                   # amr 애플리케이션의 모든 소스 코드를 포함하는 핵심 디렉토리
-│   ├── app                    # domain계층 로직들을 활용, 특정 use case 또는 애플리케이션의 흐름 정의
-│   ├── domain                 # 프로젝트의 가장 핵심적인 부분, 에뮬레이터가 "무엇을 하는지"에 대한 순수한 로직과 데이터 모델 관리   
-│   ├── infrastructure         # 애플리케이션을 구동하는 데 필요한 외부 시스템(DB, 네트워크, 설정 로딩) 담당
-│   └── presentation           # 애플리케이션이 사용자 또는 외부 시스템에 보여주는 방식을 담당(GUI, 웹대시보드, REST API,..) 
-├── test                  # amr_emulator 프로젝트내의 각 기능별 테스트 코드 관리
-│   └── fms_test
-└── third_party           # 프로젝트에서 사용되는 외부 라이브러리 및 종속성의 소스코드나 바이너리 파일 관리
-    ├── libvda5050pp
-    └── yaml-cpp
-```
-
-```
-src
-├── app
-│   ├── amrManager.cpp           # 여러 AMR 인스턴스, 프로토콜 라우팅, 서버 인스턴스 관리, 전체 시스템의 시작/중지
-│   └── amrManager.h
-├── domain
-│   ├── common
-│   │   └── NodeEdgeInfo.h
-│   ├── models    #AMR의 움직임,위치추정,제어 등 AMR자체의 핵심적인 동작방식과 관련된 수학적/물리적 모델 정의
-│   │   ├── acceleration         # 로봇의 물리적 특성이나 환경변화에 따른 가속도 모델을 독립적으로 관리하고 교체 가능  
-│   │   │   ├── accelerationModel.h
-│   │   │   ├── ddAccelerationModel.cpp
-│   │   │   └── ddAccelerationModel.h
-│   │   └── dead_reckoning       # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
-│   │       ├── dead_reckoning_euler.cpp
-│   │       ├── dead_reckoning_euler.h
-│   │       ├── deadReckoningModelFactory.cpp
-│   │       ├── deadReckoningModelFactory.h
-│   │       ├── dead_reckoning_rk2.CPP
-│   │       ├── dead_reckoning_rk2.h
-│   │       ├── dead_reckoning_rk4.cpp
-│   │       ├── dead_reckoning_rk4.h
-│   │       └── idead_reckoning.h
-│   ├── module
-│   │   ├── amr                  # 단일 AMR 인스턴스의 행동관리 및 상태제공,로봇의 이동 로직 실행
-│   │   │   ├── amr.cpp
-│   │   │   ├── amr.h
-│   │   │   └── iamr.h
-│   │   ├── localizer            # dead reckoning을 포함하여 더 넓은 의미의 위치결정 로직(필터기반, SLAM,..)
-│   │   │   ├── ilocalizer.h
-│   │   │   ├── localizer.cpp
-│   │   │   └── localizer.h
-│   │   ├── motorContorller      # AMR의 모터 구동 및 제어 로직            
-│   │   │   ├── imotorController.h
-│   │   │   ├── motorController.cpp
-│   │   │   └── motorController.h
-│   │   ├── navigator            # AMR이 목표 지점까지 효율적으로 이동할 수 있도록 경로 계획 및 이동 지시를 내리는 로직
-│   │   │   ├── inavigation.h
-│   │   │   ├── navigation.cpp
-│   │   │   └── navigation.h
-│   │   └── vcu                  # 차량제어 수행. motorController,navigator,localizer 등 하위 모듈기능을 통합 조율
-│   │       ├── ivcu.h
-│   │       ├── vcu.cpp
-│   │       └── vcu.h
-│   └── protocols        # AMR과 외부 시스템 간의 통신프로토콜 로직, VDA 5050 및 사용자정의TCP 프로토콜 선택 가능  
-│       ├── customTcpProtocol.cpp
-│       ├── customTcpProtocol.h
-│       ├── iprotocol.h
-│       ├── vda5050Protocol.cpp
-│       └── vda5050Protocol.h
-├── infrastructure    
-│   ├── itcpServer.h
-│   ├── tcpServer.cpp
-│   ├── tcpServer.h
-│   ├── yamlConfig.cpp
-│   └── yamlConfig.h
-├── main.cpp
-└── presentation      
-    ├── amrServer.cpp
-    └── amrServer.h
-```
+ 
 
 # 설치
 # 사용법
