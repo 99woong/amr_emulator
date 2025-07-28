@@ -12,6 +12,24 @@ amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성�
 
 
 # Requirement / 기능명세
+## 차량 물리특성기반 가감속 모델 구현
+-  다양한 AMR 유형에 대한 시뮬레이션 유연성 확보를 위해, 차량종류 및 물리적특성을 파라미터로 로딩하여 현실적인 가감속 모델을 구현
+```
+vehicle_type: "differential_driver"  # 차량 종류 (예: 차동 구동 방식)
+mass_vehicle: 1500.0                # 차량 자체 질량 (kg)
+load_weight: 500.0                  # 적재 중량 (kg)
+max_torque: 0.3                     # 최대 토크 (Nm)
+friction_coeff: 0.015               # 마찰 계수
+max_speed: 2.0                      # 최대 속도 (m/s)
+max_acceleration: 1.0               # 최대 가속도 (m/s^2)
+max_deceleration: 1.5               # 최대 감속도 (m/s^2)
+```
+![Diagram](image/acceleration_1.png)
+![Diagram](image/acceleration_2.png)
+![Diagram](image/acceleration_3.png)
+
+
+
 ## 모듈화 아키텍처 기반으로 설계
 - 각 기능은 독립적인 모듈로 구현되어 모듈 변경 시 다른 모듈에 미치는 영향을 최소화해야 함
 - 유지보수성을 높이고, 특정 모듈의 기능 개선 또는 교체가 용이하도록 함
@@ -25,55 +43,7 @@ amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성�
     
 ![Diagram](image/amr_emulator_diagram.png)
 
-imotor_controller.h
-```
-class IMotorController 
-{
-public:
-    virtual ~IMotorController() = default;
-    virtual void setAccelerationModel(std::shared_ptr<AccelerationModel> model) = 0;
-    virtual void setVelocity(double linear, double angular) = 0;
-    virtual void update(double dt) = 0;
-    virtual void getRPM(double& left_rpm, double& right_rpm) const = 0;
-};
-```
-motor_controller.h
-```
-class MotorController : public IMotorController
-{
-public:
-    MotorController(const AmrConfig& config);
-    
-    void setAccelerationModel(std::shared_ptr<AccelerationModel> model) override;
-    void setVelocity(double linear, double angular) override;
-    void update(double dt) override;
-    void getRPM(double& left_rpm, double& right_rpm) const override;
 
-private:
-    std::shared_ptr<AccelerationModel> acceleration_model_;
-
-    double linear_vel_cmd_, angular_vel_cmd_;
-    double linear_vel_actual_, angular_vel_actual_;
-    double left_rpm_, right_rpm_;
-    double wheel_base_, max_speed_, max_angular_speed_, wheel_radius_;
-    double max_accel_, max_angular_accel_;
-
-    void calculateWheelSpeeds(double linear_vel, double angular_vel, double& left_speed, double& right_speed) const;
-    void convertWheelSpeedToRPM(double wheel_speed, double& rpm) const;
-};
-```
-## 차량 물리특성기반 가감속 모델 구현
--  다양한 AMR 유형에 대한 시뮬레이션 유연성 확보를 위해, 차량종류 및 물리적특성을 파라미터로 로딩하여 현실적인 가감속 모델을 구현
-```
-vehicle_type: "differential_driver"  # 차량 종류 (예: 차동 구동 방식)
-mass_vehicle: 1500.0                # 차량 자체 질량 (kg)
-load_weight: 500.0                  # 적재 중량 (kg)
-max_torque: 0.3                     # 최대 토크 (Nm)
-friction_coeff: 0.015               # 마찰 계수
-max_speed: 2.0                      # 최대 속도 (m/s)
-max_acceleration: 1.0               # 최대 가속도 (m/s^2)
-max_deceleration: 1.5               # 최대 감속도 (m/s^2)
-```
 
 ## 차량 종류별 추측 항법 및 노이즈 모델
 - 차량 종류에 맞는 추측 항법(Dead Reckoning) 알고리즘을 적용하고, 실제 센서 오차를 근사화하기 위해 가우시안 노이즈를 추가
