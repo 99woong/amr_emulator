@@ -42,7 +42,6 @@ AmrManager::AmrManager(const AmrConfig& config)
    }
 }
 
-// Helper to check if a message is a VDA 5050 Order message
 bool AmrManager::isVda5050OrderMessage(const std::string& msg) 
 {
     try 
@@ -63,7 +62,6 @@ bool AmrManager::isVda5050OrderMessage(const std::string& msg)
     }
 }
 
-// Helper to check if a message is a Custom TCP message
 bool AmrManager::isCustomTcpProtocolMessage(const std::string& msg) 
 {
     try 
@@ -83,8 +81,6 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 {
     auto motor = std::make_unique<MotorController>(config);
 
-    // 2) DDAccelerationModel 생성 및 초기화
-    //    config 내에 필요한 파라미터가 있다고 가정 (yaml 등을 통해 로드됨)
     auto acc_model = std::make_shared<DDAccelerationModel>(
         config.amr_params.mass_vehicle,
         config.amr_params.load_weight,
@@ -97,7 +93,7 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
         config.amr_params.max_angular_acceleration,
         config.amr_params.max_angular_deceleration
     );
-    // 3) MotorController에 가속도 모델 주입
+  
     motor->setAccelerationModel(acc_model);
 
     auto navigation = std::make_unique<Navigation>();
@@ -171,8 +167,6 @@ void AmrManager::setupTcpServer(int port, int amr_idx)
         if (currentProtocol->getProtocolType() == "vda5050" && isVda5050OrderMessage(msg))
         {
             std::cout << "[AmrManager] Forwarding VDA5050 Order message to protocol handler for AMR " << amrs_[amr_idx]->getState() << std::endl;
-            
-            // std::cerr << "[AmrManager] Warning: VDA 5050 order message received via TCP. Expected MQTT. For AMR " << amrs_[amr_idx]->getState() << std::endl;
             
             currentProtocol->handleMessage(msg, amrs_[amr_idx].get());
         }

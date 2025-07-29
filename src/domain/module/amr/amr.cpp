@@ -21,8 +21,6 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
 
 std::string Amr::getState() const 
 {
-    // if (nodes_.empty()) return "Idle";
-    // return "AMR" + std::to_string(id_) + " at node: " + nodes_[cur_idx_].id;
     if (nodes_.empty()) 
         return "AMR" + std::to_string(id_) + ": Idle";
     return "AMR" + std::to_string(id_) + " at node: " + nodes_[cur_idx_].nodeId;

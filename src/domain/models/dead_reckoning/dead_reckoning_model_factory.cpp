@@ -9,12 +9,11 @@ std::shared_ptr<ideadReckoningModel> DeadReckoningModelFactory::create(
 {
     if (model_type == "differential_drive" || model_type == "dd") 
     {
-        // config.amr_params에서 필요한 값 가져오기
         double wheel_base = config.amr_params.wheel_base;
         double wheel_radius = config.amr_params.wheel_radius;
 
-        // (간단한 유효성 검사 예)
-        if (wheel_base <= 0.0 || wheel_radius <= 0.0) {
+        if (wheel_base <= 0.0 || wheel_radius <= 0.0) 
+        {
             throw std::invalid_argument("Invalid wheel_base or wheel_radius in config");
         }
 

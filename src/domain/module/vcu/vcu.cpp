@@ -76,7 +76,6 @@ void Vcu::updateNodes(const std::vector<NodeInfo>& nodes)
     {
         std::cout << " - NodeId: " << node.nodeId << ", Pos: (" << node.x << ", " << node.y << ", " << node.theta << ")" << std::endl;
     }
-    // 실제 동작에 맞게 내부 변수 업데이트, 밸리데이션 등 추가 구현 가능
 }
 
 void Vcu::updateEdges(const std::vector<EdgeInfo>& edges) 
@@ -89,5 +88,4 @@ void Vcu::updateEdges(const std::vector<EdgeInfo>& edges)
                   << ", StartNodeId: " << edge.startNodeId 
                   << ", EndNodeId: " << edge.endNodeId << std::endl;
     }
-    // 내부 연결 상태 갱신 등 실제 로직 추가 필요
 }

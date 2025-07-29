@@ -29,8 +29,8 @@ private:
     double max_torque_;         // 최대 토크 (Nm)
     double friction_coeff_;     // 마찰 계수
     double max_speed_;          // 최대 선형 속도
-    double max_acceleration_;   // 최대 선형 가속도 (물리 계산 후 적용될 최대값)
-    double max_deceleration_;   // 최대 선형 감속도 (물리 계산 후 적용될 최대값)
+    double max_acceleration_;   // 최대 선형 가속도 
+    double max_deceleration_;   // 최대 선형 감속도 
     double wheel_radius_;       // 휠 반경 (m)
     double max_angular_acceleration_; // 최대 각가속도
     double max_angular_deceleration_; // 최대 각감속도

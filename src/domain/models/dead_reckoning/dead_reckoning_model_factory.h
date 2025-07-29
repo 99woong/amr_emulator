@@ -2,11 +2,10 @@
 
 #include <memory>
 #include <string>
-#include "yaml_config.h"  // 전체 설정 구조체 선언 위치
+#include "yaml_config.h"  
 
 #include "idead_reckoning.h"
 #include "dead_reckoning_euler.h"
-// #include "ackermannDeadReckoning.h" 등 필요시 추가
 
 class DeadReckoningModelFactory 
 {

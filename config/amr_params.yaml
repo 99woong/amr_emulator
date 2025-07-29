@@ -2,8 +2,8 @@ amr_count: 1
 base_port: 8080
 speedup_ratio: 1
 protocol_type: "vda5050"
-vehicle_type : "differential_drive"
-dead_reckoning_model : "differential_drive"
+vehicle_type : "differential_driver"
+dead_reckoning_model : "differential_driver"
 amr_params:
   mass_vehicle : 100.0
   load_weight : 20.0
