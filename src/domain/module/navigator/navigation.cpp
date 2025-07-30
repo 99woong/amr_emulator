@@ -1,6 +1,7 @@
 #include "navigation.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 constexpr double PI = 3.14159265358979323846;
 
@@ -61,4 +62,8 @@ void Navigation::update(double current_x, double current_y, double current_theta
         out_linear = std::clamp(distance, 0.0, 1.0);
         out_angular = std::clamp(angle_diff, -1.0, 1.0);
     }
+
+    std::cout<< "nav target_x : " << target_x_ << " curr_x : " << current_x << " out_linear : " <<  out_linear << std::endl;
+    std::cout<< "nav target_y : " << target_x_ << "curr_y : " << current_x <<std::endl;
+
 }

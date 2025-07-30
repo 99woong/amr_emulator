@@ -17,6 +17,7 @@ std::shared_ptr<ideadReckoningModel> DeadReckoningModelFactory::create(
             throw std::invalid_argument("Invalid wheel_base or wheel_radius in config");
         }
 
+        std::cout << "success to set dr " << wheel_base << " " << wheel_radius << std::endl;
         return std::make_shared<deadReckoningEuler>(wheel_base, wheel_radius);
     }
     // else if (model_type == "ackermann") 

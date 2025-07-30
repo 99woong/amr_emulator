@@ -27,7 +27,7 @@ void AmrServerApp::run(const std::string& config_path)
                 IProtocol* currentProtocol = manager.getProtocol(i); // getProtocol() 사용
                 if (currentProtocol) 
                 { // nullptr 체크
-                    std::cout << "[state1] " << currentProtocol->makeStateMessage(amrs[i].get()) << std::endl;
+                    // std::cout << "[state1] " << currentProtocol->makeStateMessage(amrs[i].get()) << std::endl;
                 } 
                 else 
                 {

@@ -99,12 +99,15 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
     auto navigation = std::make_unique<Navigation>();
 
     std::shared_ptr<ideadReckoningModel> dr_model;
+
     try 
     {
+        std::cout <<"try dr model : " << config.dead_reckoning_model << std::endl;
         dr_model = DeadReckoningModelFactory::create(config.dead_reckoning_model, config);
     } 
     catch (const std::exception&) 
     {
+        std::cout <<"catch dr model : " << config.dead_reckoning_model << std::endl;
         dr_model = DeadReckoningModelFactory::create("differential_drive", config);
     }
 

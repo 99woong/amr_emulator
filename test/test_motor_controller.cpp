@@ -73,7 +73,14 @@ int main()
     int total_steps = 100; 
 
     std::cout << "\n--- Scenario 1: Accelerating forward to 1.5 m/s, 0.0 rad/s ---" << std::endl;
-    motor_controller.setVelocity(1.5, 0.0); 
+    motor_controller.setVelocity(5.5, 0.0); 
+
+    for (int i = 0; i < total_steps; ++i) {
+        motor_controller.update(dt); 
+    }
+
+    std::cout << "\n--- Scenario 1: Accelerating forward to 0.5 m/s, 0.0 rad/s ---" << std::endl;
+    motor_controller.setVelocity(0.5, 0.0); 
 
     for (int i = 0; i < total_steps; ++i) {
         motor_controller.update(dt); 

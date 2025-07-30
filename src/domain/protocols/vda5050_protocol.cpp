@@ -214,6 +214,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         if (!edges.empty()) 
         {
             std::string current_node_id = edges.front().startNodeId;
+            std::cout << "load edge : " << current_node_id << std::endl;
             ordered_nodes.push_back(node_map[current_node_id]);
 
             for (const auto& edge : edges) 
