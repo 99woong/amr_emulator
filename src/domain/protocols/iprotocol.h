@@ -15,4 +15,7 @@ public:
     virtual void start() = 0; 
     // 프로토콜의 ID 또는 타입 반환 (분기에 사용)
     virtual std::string getProtocolType() const = 0;    
+    
+    virtual void publishStateMessage(IAmr* amr) = 0;
+    virtual void publishVisualizationMessage(IAmr* amr) = 0;
 };

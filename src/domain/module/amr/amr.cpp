@@ -1,6 +1,7 @@
 #include "amr.h"
 #include <cmath>
 #include <iostream>
+#include <iomanip>  
 
 Amr::Amr(int id, std::unique_ptr<Vcu> vcu) : id_(id), vcu_(std::move(vcu)), cur_idx_(0) 
 { 
@@ -45,11 +46,17 @@ void Amr::step(double dt)
 
     double dx = target_node.x - cur_x;
     double dy = target_node.y - cur_y;
+    double dtheta = target_node.theta - cur_theta;
     double dist = std::hypot(dx, dy);
 
     constexpr double reach_threshold = 0.05; // 5cm 이내 도달 시 다음 노드
 
-    if (dist < reach_threshold)
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout<< "[amr] tx : " << target_node.x << " ty : " <<  target_node.y << " cx : " << cur_x << " cy : " <<  cur_y 
+                << " ta : " << target_node.theta << " ca : " <<  cur_theta << " dt : " << dtheta << std::endl;
+
+    // std::cout << "dist : " << dist << std::endl;
+    if (dist < reach_threshold && fabs(dtheta) < 0.05)
     {
         if (cur_idx_ + 1 < nodes_.size())
         {

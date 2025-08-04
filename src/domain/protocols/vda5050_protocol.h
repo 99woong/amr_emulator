@@ -48,6 +48,9 @@ public:
     std::string makeStateMessage(IAmr* amr) override;
     std::string getProtocolType() const override { return "vda5050"; }
 
+    void publishStateMessage(IAmr* amr) override;
+    void publishVisualizationMessage(IAmr* amr) override;
+
 private:
     IAmr* amr_ = nullptr;
     std::string agv_id_;
@@ -77,9 +80,11 @@ private:
 
     std::string order_topic_;
     std::string state_topic_;
+    std::string visualization_topic_;
 
     std::thread publish_thread_;
     std::atomic<bool> running_;
+
 
     void processVda5050Order(const nlohmann::json& order_json); // Kept for manual parsing if needed
 };

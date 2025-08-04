@@ -24,7 +24,7 @@ void MotorController::setAccelerationModel(std::shared_ptr<AccelerationModel> mo
 
 void MotorController::setVelocity(double linear, double angular) 
 {
-    cout << "linear : " << linear << "angular :" <<angular << endl; 
+    // cout << "[MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
     
     linear_vel_cmd_ = linear;
     angular_vel_cmd_ = angular;
@@ -59,13 +59,13 @@ void MotorController::update(double dt)
     convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
 
     // 디버그 출력
-    std::cout << "MotorController Update: "
-              << "Cmd Lin: " << linear_vel_cmd_ << "m/s, "
-              << "Actual Lin: " << linear_vel_actual_ << "m/s, "
-              << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
-              << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
-              << "Left RPM: " << left_rpm_ << ", "
-              << "Right RPM: " << right_rpm_ << std::endl;
+    // std::cout << "MotorController Update: "
+    //           << "Cmd Lin: " << linear_vel_cmd_ << "m/s, "
+    //           << "Actual Lin: " << linear_vel_actual_ << "m/s, "
+    //           << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
+    //           << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
+    //           << "Left RPM: " << left_rpm_ << ", "
+    //           << "Right RPM: " << right_rpm_ << std::endl;
 }
 
 void MotorController::getRPM(double& left_rpm, double& right_rpm) const 

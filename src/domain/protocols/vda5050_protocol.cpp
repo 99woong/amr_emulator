@@ -53,6 +53,7 @@ void Vda5050Protocol::useDefaultConfig()
 
     state_topic_ = "vda5050/agvs/" + agv_id_ + "/state";
     order_topic_ = "vda5050/agvs/" + agv_id_ + "/order";
+    visualization_topic_ = "vda5050/agvs/" + agv_id_ + "/visualization";
 }
 
 void Vda5050Protocol::start() 
@@ -69,23 +70,23 @@ void Vda5050Protocol::start()
             while (running_)
             {
                 // AMR가 있으면 상태 메시지 생성 및 발행
-                if (amr_ && mqtt_client_ && mqtt_client_->is_connected())
-                {
-                    try
-                    {
-                        std::string state_msg = makeStateMessage(amr_);
-                        if (!state_msg.empty())
-                        {
-                            auto msg = mqtt::make_message(state_topic_, state_msg);
-                            msg->set_qos(1);
-                            mqtt_client_->publish(msg);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        std::cerr << "[Vda5050Protocol] Exception during state publish: " << e.what() << std::endl;
-                    }
-                }
+                // if (amr_ && mqtt_client_ && mqtt_client_->is_connected())
+                // {
+                //     try
+                //     {
+                //         std::string state_msg = makeStateMessage(amr_);
+                //         if (!state_msg.empty())
+                //         {
+                //             auto msg = mqtt::make_message(state_topic_, state_msg);
+                //             msg->set_qos(1);
+                //             mqtt_client_->publish(msg);
+                //         }
+                //     }
+                //     catch (const std::exception& e)
+                //     {
+                //         std::cerr << "[Vda5050Protocol] Exception during state publish: " << e.what() << std::endl;
+                //     }
+                // }
 
                 std::this_thread::sleep_for(std::chrono::seconds(1)); // 1초 간격 발행
             }
@@ -247,6 +248,55 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         std::cerr << "[Vda5050Protocol] JSON parse error: " << e.what() << std::endl;
     }
 }
+
+void Vda5050Protocol::publishStateMessage(IAmr* amr) 
+{
+    if (!amr_ || !mqtt_client_ || !mqtt_client_->is_connected()) 
+    {
+        return;
+    }
+
+    try {
+        std::string state_msg = makeStateMessage(amr);
+        if (!state_msg.empty()) 
+        {
+            auto msg = mqtt::make_message(state_topic_, state_msg);
+            msg->set_qos(1);
+            mqtt_client_->publish(msg);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Vda5050Protocol] State publish exception: " << e.what() << std::endl;
+    }
+}
+
+
+void Vda5050Protocol::publishVisualizationMessage(IAmr* amr) 
+{
+    if (!amr_ || !mqtt_client_ || !mqtt_client_->is_connected()) 
+    {
+        return;
+    }
+
+    try {
+        // 예시: visualization 메시지는 별도 메서드 필요(여기서는 좌표만 보냄)
+        nlohmann::json vis_json;
+        double x = 0.0, y = 0.0, theta = 0.0;
+        amr->getVcu()->getEstimatedPose(x, y, theta);
+        vis_json["agvId"] = agv_id_;
+        vis_json["pose"]  = {{"x", x}, {"y", y}, {"theta", theta}};
+        vis_json["type"]  = "visualization";
+
+        // std::cout << "vis_json : " << vis_json << std::endl; 
+        // std::cout << "topic : " << visualization_topic_ << std::endl; 
+
+        auto msg = mqtt::make_message(visualization_topic_, vis_json.dump());
+        msg->set_qos(1);
+        mqtt_client_->publish(msg);
+    } catch (const std::exception& e) {
+        std::cerr << "[Vda5050Protocol] Visualization publish exception: " << e.what() << std::endl;
+    }
+}
+
 std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
 {
     if (!amr) 

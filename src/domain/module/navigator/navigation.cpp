@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>  
 
 constexpr double PI = 3.14159265358979323846;
 
@@ -20,13 +21,16 @@ void Navigation::setTarget(double x, double y, double theta)
 void Navigation::update(double current_x, double current_y, double current_theta,
                         double& out_linear, double& out_angular)
 {
-    constexpr double position_reach_threshold = 0.2;   // 위치 도달 임계 거리 (20cm)
+    constexpr double position_reach_threshold = 0.05;   // 위치 도달 임계 거리 (20cm)
     constexpr double angle_reach_threshold = 0.05;     // 회전 도달 임계 각도 (약 3도)
 
     double dx = target_x_ - current_x;
     double dy = target_y_ - current_y;
     double distance = std::sqrt(dx * dx + dy * dy);
-
+    
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout<< "[NAV] tx : " << target_x_ << " ty : " <<  target_y_ << " cx : " << current_x << " cy : " <<  current_y 
+            << " ta : " << target_theta_ << " ca : " <<  current_theta << std::endl;
     // 위치 도달 시 각도 조정 모드로 전환
     if (distance < position_reach_threshold)
     {
@@ -63,7 +67,6 @@ void Navigation::update(double current_x, double current_y, double current_theta
         out_angular = std::clamp(angle_diff, -1.0, 1.0);
     }
 
-    std::cout<< "nav target_x : " << target_x_ << " curr_x : " << current_x << " out_linear : " <<  out_linear << std::endl;
-    std::cout<< "nav target_y : " << target_x_ << "curr_y : " << current_x <<std::endl;
+    // std::cout<< std::endl;
 
 }

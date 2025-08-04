@@ -1,5 +1,6 @@
 #include "amr_manager.h"
 #include "dd_acceleration_model.h" 
+#include "dd_acceleration_without_dynamics_model.h" 
 #include "motor_controller.h"
 #include "navigation.h"
 #include "vcu.h"
@@ -81,20 +82,57 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 {
     auto motor = std::make_unique<MotorController>(config);
 
-    auto acc_model = std::make_shared<DDAccelerationModel>(
-        config.amr_params.mass_vehicle,
-        config.amr_params.load_weight,
-        config.amr_params.max_torque,
-        config.amr_params.friction_coeff,
-        config.amr_params.max_speed,
-        config.amr_params.max_acceleration,
-        config.amr_params.max_deceleration,
-        config.amr_params.wheel_radius,                // 휠 반경은 amr_params에 있으므로 따로 넘김
-        config.amr_params.max_angular_acceleration,
-        config.amr_params.max_angular_deceleration
-    );
+    // auto acc_model = std::make_shared<DDAccelerationModel>(
+    //     config.amr_params.mass_vehicle,
+    //     config.amr_params.load_weight,
+    //     config.amr_params.max_torque,
+    //     config.amr_params.friction_coeff,
+    //     config.amr_params.max_speed,
+    //     config.amr_params.max_acceleration,
+    //     config.amr_params.max_deceleration,
+    //     config.amr_params.wheel_radius,                // 휠 반경은 amr_params에 있으므로 따로 넘김
+    //     config.amr_params.max_angular_acceleration,
+    //     config.amr_params.max_angular_deceleration
+    // );
   
-    motor->setAccelerationModel(acc_model);
+    // motor->setAccelerationModel(acc_model);
+
+
+    // 다이나믹스 파라미터 체크
+    bool use_dyn_model = (config.amr_params.mass_vehicle > 0 &&
+                          config.amr_params.max_torque > 0 &&
+                          config.amr_params.max_acceleration > 0 &&
+                          config.amr_params.max_deceleration > 0);
+
+    if (use_dyn_model) 
+    {
+        std::cout << " acc model : acc_model" << std::endl;
+        auto acc_model = std::make_shared<DDAccelerationModel>(
+            config.amr_params.mass_vehicle,
+            config.amr_params.load_weight,
+            config.amr_params.max_torque,
+            config.amr_params.friction_coeff,
+            config.amr_params.max_speed,
+            config.amr_params.max_acceleration,
+            config.amr_params.max_deceleration,
+            config.amr_params.wheel_radius,
+            config.amr_params.max_angular_acceleration,
+            config.amr_params.max_angular_deceleration
+        );
+        motor->setAccelerationModel(acc_model);
+    } 
+    else
+    {
+        std::cout << " acc model : acc_model_simple" << std::endl;
+        // 다이나믹스 제외한 단순 모델 사용
+        auto acc_model_simple = std::make_shared<DDAccelerationWithoutDynamicsModel>(
+            config.amr_params.max_acceleration,
+            config.amr_params.max_deceleration,
+            config.amr_params.max_angular_acceleration,
+            config.amr_params.max_angular_deceleration
+        );
+        motor->setAccelerationModel(acc_model_simple);
+    }
 
     auto navigation = std::make_unique<Navigation>();
 
