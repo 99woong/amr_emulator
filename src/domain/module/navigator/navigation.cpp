@@ -21,16 +21,16 @@ void Navigation::setTarget(double x, double y, double theta)
 void Navigation::update(double current_x, double current_y, double current_theta,
                         double& out_linear, double& out_angular)
 {
-    constexpr double position_reach_threshold = 0.05;   // 위치 도달 임계 거리 (20cm)
-    constexpr double angle_reach_threshold = 0.05;     // 회전 도달 임계 각도 (약 3도)
+    constexpr double position_reach_threshold = 0.01;   // 위치 도달 임계 거리 (20cm)
+    constexpr double angle_reach_threshold = 0.01;     // 회전 도달 임계 각도 (약 3도)
 
     double dx = target_x_ - current_x;
     double dy = target_y_ - current_y;
     double distance = std::sqrt(dx * dx + dy * dy);
     
     std::cout << std::fixed << std::setprecision(2);
-    std::cout<< "[NAV] tx : " << target_x_ << " ty : " <<  target_y_ << " cx : " << current_x << " cy : " <<  current_y 
-            << " ta : " << target_theta_ << " ca : " <<  current_theta << std::endl;
+    // std::cout<< "[NAV] tx : " << target_x_ << " ty : " <<  target_y_ << " cx : " << current_x << " cy : " <<  current_y 
+    //         << " ta : " << target_theta_ << " ca : " <<  current_theta << std::endl;
     // 위치 도달 시 각도 조정 모드로 전환
     if (distance < position_reach_threshold)
     {

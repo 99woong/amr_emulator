@@ -1,21 +1,16 @@
-# cmake_minimum_required(VERSION 3.10)
-# project(TestFmsVda5050Client CXX)
-# find_package(PahoMqttCpp REQUIRED)
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/json)
-# add_executable(test_fms_vda5050_client test_fms_vda5050_client.cpp)
-# target_link_libraries(test_fms_vda5050_client PRIVATE PahoMqttCpp::paho-mqttpp3-shared)
-# if(UNIX AND PAHOMQTTC_USE_SSL)
-#     find_package(OpenSSL REQUIRED)
-#     target_link_libraries(test_fms_vda5050_client PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-# endif()
-
 cmake_minimum_required(VERSION 3.10)
 project(fms_mqtt_publish)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(fms_mqtt_publish fms_mqtt_publish.cpp)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(Threads REQUIRED)
 
 find_library(PAHO_MQTT_CPP_LIB paho-mqttpp3)
 find_library(PAHO_MQTT_C_LIB paho-mqtt3a)
@@ -28,10 +23,27 @@ if (NOT PAHO_MQTT_C_LIB)
     message(FATAL_ERROR "paho-mqtt3a library not found")
 endif()
 
-find_package(Threads REQUIRED)
+add_executable(fms_mqtt_publish fms_mqtt_publish.cpp)
 
-target_link_libraries(fms_mqtt_publish PRIVATE
+ament_target_dependencies(fms_mqtt_publish
+    rclcpp
+    geometry_msgs
+    tf2
+    tf2_geometry_msgs
+    nlohmann_json
+)
+
+target_link_libraries(fms_mqtt_publish
     ${PAHO_MQTT_CPP_LIB}
     ${PAHO_MQTT_C_LIB}
-    Threads::Threads
-)
+    Threads::Threads)
+
+# target_link_libraries(fms_mqtt_publish PRIVATE
+#     ${PAHO_MQTT_CPP_LIB}
+#     ${PAHO_MQTT_C_LIB}
+#     Threads::Threads
+# )
+
+install(TARGETS fms_mqtt_publish DESTINATION lib/${PROJECT_NAME})
+
+ament_package()

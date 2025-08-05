@@ -85,6 +85,10 @@ private:
     std::thread publish_thread_;
     std::atomic<bool> running_;
 
+    uint32_t factsheet_header_id_ = 0;
 
     void processVda5050Order(const nlohmann::json& order_json); // Kept for manual parsing if needed
+    void handleInstantAction(const nlohmann::json& instant_action_json);
+    std::string makeFactsheetMessage();
+    std::string getCurrentTimestampISO8601();
 };

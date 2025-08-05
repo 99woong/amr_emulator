@@ -42,5 +42,9 @@ AmrConfig YamlConfig::load(const std::string& filename)
         cfg.speedup_ratio  = 1.0;
     }
 
+    cfg.visualization_publish_period = config["visualization_publish_period"].as<double>();
+    cfg.state_publish_period = config["state_publish_period"].as<double>();
+    cfg.control_period = config["control_period"].as<double>();
+
     return cfg;
 }

@@ -132,6 +132,90 @@ void Vda5050Protocol::stop()
     }    
 }
 
+// ISO8601 UTC 타임스탬프 생성 함수 정의
+std::string Vda5050Protocol::getCurrentTimestampISO8601()
+{
+    using namespace std::chrono;
+    auto now = system_clock::now();
+    std::time_t now_c = system_clock::to_time_t(now);
+    auto milliseconds = duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+    std::tm utc_tm;
+#ifdef _WIN32
+    gmtime_s(&utc_tm, &now_c);
+#else
+    gmtime_r(&now_c, &utc_tm);
+#endif
+
+    std::ostringstream oss;
+    oss << std::put_time(&utc_tm, "%Y-%m-%dT%H:%M:%S");
+    oss << '.' << std::setfill('0') << std::setw(3) << milliseconds.count() << "Z";
+    return oss.str();
+}
+
+std::string Vda5050Protocol::makeFactsheetMessage()
+{
+    nlohmann::json factsheet_json;
+
+    // 헤더 정보
+    factsheet_json["headerId"] = factsheet_header_id_++;
+    factsheet_json["timestamp"] = getCurrentTimestampISO8601();
+    factsheet_json["version"] = "2.1.0";  // 프로토콜 버전에 맞게 설정
+    factsheet_json["manufacturer"] = "YourCompanyName"; // 실제 회사명 입력
+    factsheet_json["serialNumber"] = agv_id_;  // AGV ID 또는 시리얼 번호
+
+    // AGV 설명 (agvDescription)
+    nlohmann::json agv_desc;
+    agv_desc["agvId"] = agv_id_;
+    agv_desc["manufacturer"] = "YourCompanyName"; // 실제 메이커명
+    agv_desc["serialNumber"] = agv_id_;
+    agv_desc["model"] = "YourAGVModel";           // 모델명 예: "AGV-1000"
+    agv_desc["softwareVersion"] = "v1.0.0";       // 소프트웨어 버전
+    agv_desc["hardwareVersion"] = "v1.0";         // 하드웨어 버전
+    agv_desc["maximumPayload"] = 1000;             // 최대 적재 중량 단위 kg(예)
+    agv_desc["maximumSpeed"] = 5.0;                 // 최대 속도 m/s
+    agv_desc["wheelBase"] = 1.2;                    // 휠베이스 m
+    agv_desc["axleCount"] = 2;                       // 축 개수
+
+    factsheet_json["agvDescription"] = agv_desc;
+
+    return factsheet_json.dump();
+}
+
+void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_json)
+{
+    if (!mqtt_client_ || !mqtt_client_->is_connected())
+    {
+        std::cerr << "[Vda5050Protocol] MQTT client disconnected, cannot send factsheet.\n";
+        return;
+    }
+
+    try
+    {
+        // instant_action_json 내 actionType 이 factsheet 요청인지 확인 (예시 키 이름, 값은 실제 프로토콜 참고)
+        if (instant_action_json.contains("actionType") &&
+            instant_action_json["actionType"] == "factsheetRequest")
+        {
+            std::cout << "[Vda5050Protocol] Factsheet instant action requested.\n";
+            std::string factsheet_msg = makeFactsheetMessage();
+            std::string instant_action_topic = "vda5050/agvs/" + agv_id_ + "/instantActions";
+
+            auto msg = mqtt::make_message(instant_action_topic, factsheet_msg);
+            msg->set_qos(1);
+            mqtt_client_->publish(msg);
+            std::cout << "[Vda5050Protocol] Factsheet message published on topic: " << instant_action_topic << std::endl;
+        }
+        else
+        {
+            std::cout << "[Vda5050Protocol] Unknown or unsupported instant action type.\n";
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Vda5050Protocol] Exception publishing factsheet: " << e.what() << std::endl;
+    }
+}
+
 void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 {
     std::cout << "[Vda5050Protocol] handleMessage called with message size: " << msg.size() << std::endl;
@@ -147,23 +231,32 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         auto order_json = nlohmann::json::parse(msg);
         std::cout << "[Vda5050Protocol] JSON parsed successfully." << std::endl;
 
-        if (!order_json.contains("nodes"))
-        {
-            std::cerr << "[Vda5050Protocol] JSON missing field: nodes" << std::endl;
-        }
-        else
-        {
-            std::cout << "[Vda5050Protocol] JSON contains nodes: " << order_json["nodes"].size() << std::endl;
-        }
+        // if (!order_json.contains("nodes"))
+        // {
+        //     std::cerr << "[Vda5050Protocol] JSON missing field: nodes" << std::endl;
+        // }
+        // else
+        // {
+        //     std::cout << "[Vda5050Protocol] JSON contains nodes: " << order_json["nodes"].size() << std::endl;
+        // }
 
-        if (!order_json.contains("edges"))
+        // if (!order_json.contains("edges"))
+        // {
+        //     std::cerr << "[Vda5050Protocol] JSON missing field: edges" << std::endl;
+        // }
+        // else
+        // {
+        //     std::cout << "[Vda5050Protocol] JSON contains edges: " << order_json["edges"].size() << std::endl;
+        // }
+        if (order_json.contains("instantActions") && order_json["instantActions"].is_array())
         {
-            std::cerr << "[Vda5050Protocol] JSON missing field: edges" << std::endl;
-        }
-        else
-        {
-            std::cout << "[Vda5050Protocol] JSON contains edges: " << order_json["edges"].size() << std::endl;
-        }
+            for (const auto& instant_action : order_json["instantActions"])
+            {
+                handleInstantAction(instant_action);
+            }
+            // Instant Action만 처리하고 일반 주문 처리 없이 return 할 수도 있음
+            // 상황에 따라 적절히 조절
+        }        
 
 
         if (!order_json.contains("nodes") || !order_json.contains("edges")) 

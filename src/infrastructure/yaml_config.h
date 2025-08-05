@@ -25,6 +25,9 @@ struct AmrConfig
     std::string vehicle_type;  
     std::string dead_reckoning_model;  
     double speedup_ratio = 1.0;
+    double visualization_publish_period = 0.05;
+    double state_publish_period = 1.0;
+    double control_period = 0.01;
     AmrParams amr_params;
 };
 

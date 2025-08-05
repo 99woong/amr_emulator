@@ -20,6 +20,7 @@ public:
     IVcu* getVcu() override;  
 private:
     int id_;
+    bool is_angle_adjusting_ = false;
     std::vector<NodeInfo> nodes_;
     std::vector<EdgeInfo> edges_;
     std::size_t cur_idx_ = 0;

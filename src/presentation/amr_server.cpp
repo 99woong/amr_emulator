@@ -13,10 +13,10 @@ void AmrServerApp::run(const std::string& config_path)
     manager.startAll();
 
     const double speedup = config.speedup_ratio;
-    const double dt_control = 0.01;       // 내부 제어 주기(10ms)
-    const double dt_state = 1.0;           // state topic (1초)
-    const double dt_vis = 0.05;            // visualization topic (50ms)
-    const double dt_master = 0.001;        // 최소 단위 루프(가급적 작게)
+    const double dt_control = config.control_period;       // 내부 제어 주기(10ms)
+    const double dt_state = config.state_publish_period;           // state topic (1초)
+    const double dt_vis = config.visualization_publish_period;            // visualization topic (50ms)
+    const double dt_master = 0.0001;        // 최소 단위 루프(가급적 작게)
 
     double sim_time = 0.0;
     double next_motor_update = 0.0;
