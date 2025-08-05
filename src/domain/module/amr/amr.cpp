@@ -41,7 +41,7 @@ void Amr::step(double dt)
     constexpr double PI = 3.14159265358979323846;
 
     if (nodes_.empty() || cur_idx_ >= nodes_.size()) {
-        std::cerr << "[Amr::step] No nodes or invalid index.\n";
+        // std::cerr << "[Amr::step] No nodes or invalid index.\n";
         return;
     }
 

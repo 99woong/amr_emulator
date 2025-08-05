@@ -12,7 +12,7 @@
 void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_ptr msg) 
 {
     std::cout << "[MQTT] Message arrived on topic: " << msg->get_topic() << std::endl;
-    if (msg->get_topic() == proto_->order_topic_) 
+    if (msg->get_topic() == proto_->order_topic_ || msg->get_topic() == proto_->instant_actions_topic) 
     {
         proto_->handleMessage(msg->to_string(), proto_->amr_);
     }
@@ -53,6 +53,7 @@ void Vda5050Protocol::useDefaultConfig()
 
     state_topic_ = "vda5050/agvs/" + agv_id_ + "/state";
     order_topic_ = "vda5050/agvs/" + agv_id_ + "/order";
+    instant_actions_topic = "vda5050/agvs/" + agv_id_ + "/instantActions";
     visualization_topic_ = "vda5050/agvs/" + agv_id_ + "/visualization";
 }
 
@@ -62,8 +63,9 @@ void Vda5050Protocol::start()
     {
         mqtt_client_->connect(conn_opts_)->wait();
         mqtt_client_->subscribe(order_topic_, 1)->wait();
+        mqtt_client_->subscribe(instant_actions_topic, 1)->wait();
         running_ = true;
-        std::cout << "[Vda5050Protocol] MQTT connected & subscribed to: " << order_topic_ << std::endl;
+        std::cout << "[Vda5050Protocol] MQTT connected & subscribed to: " << order_topic_ << " and " << instant_actions_topic << std::endl;
 
         publish_thread_ = std::thread([this]()
         {
@@ -157,27 +159,26 @@ std::string Vda5050Protocol::makeFactsheetMessage()
 {
     nlohmann::json factsheet_json;
 
-    // 헤더 정보
+    // headerId 자동 증가
     factsheet_json["headerId"] = factsheet_header_id_++;
     factsheet_json["timestamp"] = getCurrentTimestampISO8601();
-    factsheet_json["version"] = "2.1.0";  // 프로토콜 버전에 맞게 설정
-    factsheet_json["manufacturer"] = "YourCompanyName"; // 실제 회사명 입력
-    factsheet_json["serialNumber"] = agv_id_;  // AGV ID 또는 시리얼 번호
+    factsheet_json["version"] = "2.1.0";
+    factsheet_json["manufacturer"] = "YourCompanyName";       // 실제 회사명으로 변경
+    factsheet_json["serialNumber"] = agv_id_;                  // agv_id_ 멤버 변수 정의 필요
 
-    // AGV 설명 (agvDescription)
-    nlohmann::json agv_desc;
-    agv_desc["agvId"] = agv_id_;
-    agv_desc["manufacturer"] = "YourCompanyName"; // 실제 메이커명
-    agv_desc["serialNumber"] = agv_id_;
-    agv_desc["model"] = "YourAGVModel";           // 모델명 예: "AGV-1000"
-    agv_desc["softwareVersion"] = "v1.0.0";       // 소프트웨어 버전
-    agv_desc["hardwareVersion"] = "v1.0";         // 하드웨어 버전
-    agv_desc["maximumPayload"] = 1000;             // 최대 적재 중량 단위 kg(예)
-    agv_desc["maximumSpeed"] = 5.0;                 // 최대 속도 m/s
-    agv_desc["wheelBase"] = 1.2;                    // 휠베이스 m
-    agv_desc["axleCount"] = 2;                       // 축 개수
+    nlohmann::json physicalParams;
+    physicalParams["speedMin"] = 0.0;
+    physicalParams["speedMax"] = 5.0;
+    physicalParams["angularSpeedMin"] = -1.0;
+    physicalParams["angularSpeedMax"] = 1.0;
+    physicalParams["accelerationMax"] = 1.0;
+    physicalParams["decelerationMax"] = 1.0;
+    physicalParams["heightMin"] = 0.0;
+    physicalParams["heightMax"] = 1.5;
+    physicalParams["width"] = 0.8;
+    physicalParams["length"] = 1.2;
 
-    factsheet_json["agvDescription"] = agv_desc;
+    factsheet_json["physicalParameters"] = physicalParams;
 
     return factsheet_json.dump();
 }
@@ -250,6 +251,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         // }
         if (order_json.contains("instantActions") && order_json["instantActions"].is_array())
         {
+            std::cout <<"recv instantAction" <<std::endl;
             for (const auto& instant_action : order_json["instantActions"])
             {
                 handleInstantAction(instant_action);

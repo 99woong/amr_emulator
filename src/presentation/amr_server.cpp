@@ -57,7 +57,7 @@ void AmrServerApp::run(const std::string& config_path)
             next_state_pub += dt_state;
         }
         // visualization topic publish: dt_vis 마다 호출
-        if (sim_time >= next_vis_pub) 
+        if (sim_time >= next_vis_pub && dt_vis > 0.0) 
         {
             for (size_t i = 0; i < amrs.size(); ++i) 
             {

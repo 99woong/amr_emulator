@@ -4,7 +4,7 @@ speedup_ratio: 2
 protocol_type: "vda5050"
 vehicle_type : "differential_drive"
 dead_reckoning_model : "differential_drive"
-visualization_publish_period : 0.1
+visualization_publish_period : 0.05
 state_publish_period : 1.0
 control_period : 0.01
 amr_params:

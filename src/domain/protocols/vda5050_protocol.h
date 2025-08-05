@@ -1,10 +1,13 @@
 #pragma once
 #include "iprotocol.h"
 #include "iamr.h"
+
+#include "yaml_config.h"
 #include <vda5050++/handle.h>
 #include <vda5050++/config.h>
 #include <handler/base_navigation_handler.h> // Make sure this is included
 #include <sinks/status_sink.h> 
+
 
 #include <vda5050/Header_vda5050.h> 
 #include <vda5050/AGVPosition.h>
@@ -50,10 +53,12 @@ public:
 
     void publishStateMessage(IAmr* amr) override;
     void publishVisualizationMessage(IAmr* amr) override;
+    void setConfig(const AmrConfig& config) { config_ = config; }
 
 private:
     IAmr* amr_ = nullptr;
     std::string agv_id_;
+    AmrConfig config_;  
 
     std::string mqtt_server_uri_ = "tcp://localhost:1883";
 
@@ -81,6 +86,7 @@ private:
     std::string order_topic_;
     std::string state_topic_;
     std::string visualization_topic_;
+    std::string instant_actions_topic;
 
     std::thread publish_thread_;
     std::atomic<bool> running_;

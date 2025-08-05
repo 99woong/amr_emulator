@@ -33,7 +33,7 @@ void MotorController::setVelocity(double linear, double angular)
     linear_vel_cmd_ = std::clamp(linear_vel_cmd_, -max_speed_, max_speed_);
     angular_vel_cmd_ = std::clamp(angular_vel_cmd_, -max_angular_speed_, max_angular_speed_);
 }
-
+    
 void MotorController::update(double dt) 
 {
     if (acceleration_model_) 
