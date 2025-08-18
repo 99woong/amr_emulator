@@ -262,7 +262,68 @@ AmrManager::AmrManager(const AmrConfig& config)
 }
 
 ```
- 
+## 다축조향모델 추가
+- 바이시클 기구학(Bicycle Kinematics)
+  - 차량을 한 쌍의 앞바퀴와 뒷바퀴로 단순화한 모델로, 조향각과 차량 전체 궤적 계산에 많이 사용
+- 다축조향 확장(각 조향축별로)
+  - 축의 위치(길이 방향 위치)와 횡간거리(차폭)
+  - 회전 중심 반지름에 따른 각 축의 조향각
+  - 좌우 바퀴 각각 조향각과 구동속도 차이를 계산하는 방식으로 확장                                                                                                                  
+
+```
+vehicle_type: multi_axis_steering
+amr_params:
+  mass_vehicle: 70000          # kg
+  axle_positions: [1.5, 4.5, 10.5, 13.5]  # 각 축의 x위치 (m)
+  track_width: 2.5               # 좌/우 바퀴간 거리 (m)
+  wheel_radius: 0.45             # 바퀴 반경 (m)
+  max_steering_angle: 30.0       # (deg)
+```
+
+```
+"edges": [
+  {
+    "edgeId": "E2",
+    "sequenceId": 1,
+    "startNodeId": "N2",
+    "endNodeId": "N3",
+    "maxSpeed": 2.0,
+    "turnCenter": {"x": 12.0, "y": 0.0}
+  }
+]
+```
+
+
+```
+L = 15.0     # 차량 길이
+W = 2.5      # 차량 폭
+axle_pos = [1.5, 4.5, 10.5, 13.5]  # 각 축 x위치
+x_c, y_c = 12.0, 0.0
+x_s, y_s = 12.0, 0.0   # start
+x_e, y_e = 12.0, 12.0  # end
+
+# 회전 반경
+R = ((x_s - x_c)^2 + (y_s - y_c)^2)^0.5
+
+# 차량 중심 원주속도 V (예: 2.0 m/s)
+V_cg = 2.0
+omega = V_cg / R
+
+results = []
+for a_i in axle_pos:
+    r_i = R + (a_i - L/2)
+    r_left  = r_i - W/2
+    r_right = r_i + W/2
+
+    # steering angle
+    alpha_left  = atan(L / r_left)
+    alpha_right = atan(L / r_right)
+
+    # wheel velocity
+    v_left  = omega * r_left
+    v_right = omega * r_right
+
+```
 
 # 설치
 # 사용법
