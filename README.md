@@ -270,6 +270,7 @@ AmrManager::AmrManager(const AmrConfig& config)
   - 회전 중심 반지름에 따른 각 축의 조향각
   - 좌우 바퀴 각각 조향각과 구동속도 차이를 계산하는 방식으로 확장                                                                                                                  
 
+[파라메터 추가]
 ```
 vehicle_type: multi_axis_steering
 amr_params:
@@ -280,6 +281,7 @@ amr_params:
   max_steering_angle: 30.0       # (deg)
 ```
 
+[프로토콜 추가]
 ```
 "edges": [
   {
@@ -293,7 +295,7 @@ amr_params:
 ]
 ```
 
-
+]
 ```
 L = 15.0     # 차량 길이
 W = 2.5      # 차량 폭
