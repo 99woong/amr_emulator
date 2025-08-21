@@ -1,6 +1,6 @@
 amr_count: 1
 base_port: 8080
-speedup_ratio: 2
+speedup_ratio: 3
 protocol_type: "vda5050"
 vehicle_type : "differential_drive"
 dead_reckoning_model : "differential_drive"
@@ -14,7 +14,7 @@ amr_params:
   friction_coeff : 0.05 
   max_speed : 5.0
   max_angular_speed: 1.0
-  max_acceleration : 0.1
+  max_acceleration : 2.0
   max_deceleration : 2.5
   max_angular_acceleration: 0.5
   max_angular_deceleration: 0.5

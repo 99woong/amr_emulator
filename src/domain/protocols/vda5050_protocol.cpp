@@ -232,23 +232,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         auto order_json = nlohmann::json::parse(msg);
         std::cout << "[Vda5050Protocol] JSON parsed successfully." << std::endl;
 
-        // if (!order_json.contains("nodes"))
-        // {
-        //     std::cerr << "[Vda5050Protocol] JSON missing field: nodes" << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "[Vda5050Protocol] JSON contains nodes: " << order_json["nodes"].size() << std::endl;
-        // }
-
-        // if (!order_json.contains("edges"))
-        // {
-        //     std::cerr << "[Vda5050Protocol] JSON missing field: edges" << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "[Vda5050Protocol] JSON contains edges: " << order_json["edges"].size() << std::endl;
-        // }
         if (order_json.contains("instantActions") && order_json["instantActions"].is_array())
         {
             std::cout <<"recv instantAction" <<std::endl;
@@ -267,7 +250,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
 
-        
         // 1) nodes ID별 맵 생성
         std::unordered_map<std::string, NodeInfo> node_map;
         for (const auto& node : order_json["nodes"])
@@ -295,6 +277,13 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.sequenceId = edge.value("sequenceId", 0);
             e.startNodeId = edge.value("startNodeId", "");
             e.endNodeId = edge.value("endNodeId", "");
+            e.maxSpeed = edge.value("maxSpeed", 0.0);
+            if (edge.contains("turnCenter"))
+            {
+                e.turnCenter.x = edge["nodePosition"].value("x", 0.0);
+                e.turnCenter.x = edge["nodePosition"].value("y", 0.0);
+            }            
+            
             edges.push_back(e);
 
             std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;            

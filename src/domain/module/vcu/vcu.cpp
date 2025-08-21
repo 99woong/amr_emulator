@@ -28,7 +28,6 @@ void Vcu::update(double dt)
 
     double linear_vel_cmd = 0.0, angular_vel_cmd = 0.0;
     navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd);
-
     motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
     motor_->update(dt);
 }

@@ -28,7 +28,7 @@ void Navigation::update(double current_x, double current_y, double current_theta
     double dy = target_y_ - current_y;
     double distance = std::sqrt(dx * dx + dy * dy);
     
-    std::cout << std::fixed << std::setprecision(2);
+    // std::cout << std::fixed << std::setprecision(2);
     // std::cout<< "[NAV] tx : " << target_x_ << " ty : " <<  target_y_ << " cx : " << current_x << " cy : " <<  current_y 
     //         << " ta : " << target_theta_ << " ca : " <<  current_theta << std::endl;
     // 위치 도달 시 각도 조정 모드로 전환
@@ -63,7 +63,7 @@ void Navigation::update(double current_x, double current_y, double current_theta
         while (angle_diff > M_PI)  angle_diff -= 2.0 * M_PI;
         while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
 
-        out_linear = std::clamp(distance, 0.0, 1.0);
+        out_linear = std::clamp(distance, 0.0, 10.0);
         out_angular = std::clamp(angle_diff, -1.0, 1.0);
     }
 

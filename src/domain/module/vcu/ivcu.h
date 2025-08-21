@@ -1,5 +1,8 @@
 #pragma once
 #include "node_edge_info.h"
+#include "imotor_controller.h"
+#include "inavigation.h"
+#include "ilocalizer.h"
 #include <vector>
 
 class IVcu 
@@ -14,4 +17,8 @@ public:
     
     virtual void getEstimatedPose(double& x, double& y, double& theta) const = 0;
     virtual void setInitialPose(double x, double y, double theta) = 0;    
+
+    virtual IMotorController& getMotor() = 0;
+    virtual INavigation& getNavigation() = 0;
+    virtual ILocalizer& getLocalizer() = 0;
 };

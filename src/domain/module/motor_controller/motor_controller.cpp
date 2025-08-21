@@ -22,6 +22,11 @@ void MotorController::setAccelerationModel(std::shared_ptr<AccelerationModel> mo
     acceleration_model_ = model;
 }
 
+void MotorController::setMaxSpeed(double max_speed)
+{
+    max_speed_ = max_speed;
+}
+
 void MotorController::setVelocity(double linear, double angular) 
 {
     // cout << "[MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
@@ -49,6 +54,9 @@ void MotorController::update(double dt)
         angular_vel_actual_ = angular_vel_cmd_;
         std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
+
+    // std::cout << "linear_vel_actual_ : " << linear_vel_actual_ << std::endl;
+
 
     // 실제 휠 속도 계산 (차동 구동 로봇 기준)
     double left_wheel_speed, right_wheel_speed;

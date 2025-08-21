@@ -24,5 +24,6 @@ private:
     std::vector<NodeInfo> nodes_;
     std::vector<EdgeInfo> edges_;
     std::size_t cur_idx_ = 0;
+    std::size_t cur_edge_idx_ = 0;
     std::unique_ptr<Vcu> vcu_;
 };

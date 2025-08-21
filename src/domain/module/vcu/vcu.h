@@ -18,9 +18,9 @@ public:
     void setInitialPose(double x, double y, double theta) override;
     void getEstimatedPose(double& x, double& y, double& theta) const override;
     
-    IMotorController& getMotor();
-    INavigation& getNavigation();
-    ILocalizer& getLocalizer();
+    IMotorController& getMotor() override;
+    INavigation& getNavigation() override;
+    ILocalizer& getLocalizer() override;
 
 
 private:
