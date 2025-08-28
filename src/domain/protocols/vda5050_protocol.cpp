@@ -280,13 +280,18 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.maxSpeed = edge.value("maxSpeed", 0.0);
             if (edge.contains("turnCenter"))
             {
-                e.turnCenter.x = edge["nodePosition"].value("x", 0.0);
-                e.turnCenter.x = edge["nodePosition"].value("y", 0.0);
+                e.turnCenter.x = edge["turnCenter"].value("x", 0.0);
+                e.turnCenter.y = edge["turnCenter"].value("y", 0.0);
             }            
             
             edges.push_back(e);
 
-            std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;            
+            std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;
+            
+            if (edge.contains("turnCenter"))
+            {
+                std::cout << " Center_x : " << e.turnCenter.x << " Center_y : " << e.turnCenter.y << std::endl; 
+            }           
         }
 
         std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
@@ -302,11 +307,12 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             std::cout << "load edge : " << current_node_id << std::endl;
             ordered_nodes.push_back(node_map[current_node_id]);
 
-            for (const auto& edge : edges) 
+            for(const auto& edge : edges) 
             {
                 // endNode를 추가 (startNode는 이미 추가됐으므로 중복 방지)
                 if (node_map.find(edge.endNodeId) != node_map.end()) 
                 {
+                    std::cout << " ordered_nodes : " << node_map[edge.endNodeId].nodeId << std::endl; 
                     ordered_nodes.push_back(node_map[edge.endNodeId]);
                 } 
                 else 
@@ -321,11 +327,11 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         }
 
         // 4) AMR에 edges 기반 순서로 된 노드 리스트와 원본 edges 전달
-        amr->setOrder(ordered_nodes, edges);
+        // amr->setOrder(ordered_nodes, edges);
+        amr->setOrder(ordered_nodes, edges, 15.0);
 
         std::cout << "[Vda5050Protocol] Order processed with " << ordered_nodes.size()
                   << " nodes & " << edges.size() << " edges assigned to AMR.\n";
-
     } 
     catch (const std::exception& e) 
     {
