@@ -9,10 +9,200 @@ Amr::Amr(int id, std::unique_ptr<Vcu> vcu) : id_(id), vcu_(std::move(vcu)), cur_
 
 }
 
-void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges)
+// void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges)
+// {
+//     nodes_ = nodes;
+//     edges_ = edges;
+//     cur_edge_idx_ = 0;
+//     is_angle_adjusting_ = false;
+
+//     if (!edges_.empty() && vcu_)
+//     {
+//         const std::string& target_node_id = edges_[cur_edge_idx_].endNodeId;
+//         auto it = std::find_if(nodes_.begin(), nodes_.end(),
+//              [&](const NodeInfo& n){ return n.nodeId == target_node_id; });
+//         if (it != nodes_.end())
+//         {
+//             vcu_->setTargetPosition(it->x, it->y, it->theta);
+//         }
+//     }
+// }
+
+Line Amr::getLineFromPoints(const NodeInfo& p1, const NodeInfo& p2) 
 {
-    nodes_ = nodes;
-    edges_ = edges;
+    double A = p2.y - p1.y;
+    double B = p1.x - p2.x;
+    double C = p2.x * p1.y - p1.x * p2.y;
+    
+    return {A, B, C};
+}
+
+// // 원호 접점 계산 함수 (직선과 원 중심, 반경으로)
+// NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint) 
+// {
+//     double A = line.A, B = line.B, C = line.C;
+//     double x0 = center.x;
+//     double y0 = center.y;
+//     double base = A*A + B*B;
+//     double D = radius*radius*base - C*C;
+//     NodeInfo pt;
+
+//     if (D < 0) 
+//     {
+//         // 접선 없음. fallback 처리 필요
+//         pt.x = x0; pt.y = y0;
+//     } 
+//     else 
+//     {
+//         double sqrtD = std::sqrt(D);
+//         double sign = firstPoint ? 1.0 : -1.0;
+        
+//         pt.x = (A*(A*x0 + B*y0) - B*(C + sign*sqrtD)) / base;
+//         pt.y = (B*(A*x0 + B*y0) + A*(C + sign*sqrtD)) / base;
+//     }
+    
+//     pt.theta = 0.0; // 필요시 계산
+//     return pt;
+// }
+
+NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, 
+                                    const NodeInfo& ref, bool preferCloser) 
+{
+    double A = line.A, B = line.B, C = line.C;
+    double cx = center.x, cy = center.y;
+    double denom = A*A + B*B;
+    double dist = (A*cx + B*cy + C) / sqrt(denom); // 원 중심-직선 거리
+
+    // 중심에서 직선으로 내린 수선의 발
+    double x0 = cx - A * (A*cx + B*cy + C) / denom;
+    double y0 = cy - B * (A*cx + B*cy + C) / denom;
+
+    double d2 = radius*radius - ((A*cx + B*cy + C)*(A*cx + B*cy + C))/denom; // 판별식
+
+    NodeInfo pt;
+
+    if(d2 < 0) {
+        // 접점 없음(fallback)
+        pt.x = x0; pt.y = y0;
+    } else {
+        double mult = std::sqrt(d2 / denom);
+
+        // 직선의 방향벡터(B, -A)
+        double dx = B / sqrt(denom);
+        double dy = -A / sqrt(denom);
+
+        NodeInfo p1; 
+        p1.x = x0 + mult * dx;
+        p1.y = y0 + mult * dy;
+
+        NodeInfo p2; 
+        p2.x = x0 - mult * dx;
+        p2.y = y0 - mult * dy;
+
+        // ref와 가까운 쪽, 아니면 preferCloser
+        double dist1 = hypot(p1.x - ref.x, p1.y - ref.y);
+        double dist2 = hypot(p2.x - ref.x, p2.y - ref.y);
+        pt = (preferCloser == (dist1 < dist2)) ? p1 : p2;
+    }
+    pt.theta = 0.0;
+    return pt;
+}
+
+const NodeInfo* Amr::findNodeById(const std::vector<NodeInfo>& nodes, const std::string& id)
+{
+    auto it = std::find_if(nodes.begin(), nodes.end(), [&](const NodeInfo& n) {
+        return n.nodeId == id;
+    });
+    return (it != nodes.end()) ? &(*it) : nullptr;
+}
+
+void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base)
+{
+    std::vector<NodeInfo> new_nodes;
+    std::vector<EdgeInfo> new_edges;
+
+    new_nodes.push_back(nodes.front());
+
+    for (size_t i = 0; i < edges.size(); ++i)
+    {
+        const EdgeInfo& prev_edge = edges[i-1];
+        const EdgeInfo& curr_edge = edges[i];
+
+        if (curr_edge.turnCenter.x != 0.0 || curr_edge.turnCenter.y != 0.0)
+        {
+            NodeInfo center;
+            center.x = curr_edge.turnCenter.x;
+            center.y = curr_edge.turnCenter.y;
+            double R = wheel_base / std::tan(30.0 * M_PI / 180.0); // 최대 조향각 30도 사용 예시
+
+            std::cout << "R : " << R << " wheel_base : " << wheel_base << std::endl;
+
+            const NodeInfo* start_node = findNodeById(nodes, prev_edge.startNodeId);
+            const NodeInfo* via_node = findNodeById(nodes, prev_edge.endNodeId);   
+            const NodeInfo* end_node = findNodeById(nodes, curr_edge.endNodeId);
+
+            if (!start_node || !via_node || !end_node)
+            {
+                // 노드가 없으면 다음 루프
+                continue;
+            }
+
+            std::cout << "start_node : " << start_node->x << " " <<  start_node->y << std::endl;
+            std::cout << "via_node : " << via_node->x << " " <<  via_node->y << std::endl;
+            std::cout << "end_node : " << end_node->x << " " <<  end_node->y << std::endl;
+            Line line1 = getLineFromPoints(*start_node, *via_node);
+            std::cout << "line1 : " << line1.A << " " << line1.B << " "<< line1.C << " " << std::endl;
+
+            // NodeInfo tangent_in = calculateTangentPoint(line1, center, R, true);
+            NodeInfo tangent_in = calculateTangentPoint(line1, center, R, *start_node, false);
+
+
+            Line line2 = getLineFromPoints(*via_node, *end_node);
+            // NodeInfo tangent_out = calculateTangentPoint(line2, center, R, false);
+            NodeInfo tangent_out = calculateTangentPoint(line2, center, R, *end_node, false);
+
+            std::cout << "tangent_in : " << tangent_in.x << " " << tangent_in.y << std::endl;
+            std::cout << "tangent_out : " << tangent_out.x << " " << tangent_out.y << std::endl;
+        
+
+            tangent_in.nodeId = "arc_in_" + std::to_string(i);
+            tangent_out.nodeId = "arc_out_" + std::to_string(i);
+
+            new_nodes.push_back(tangent_in);
+            new_nodes.push_back(tangent_out);
+
+            // 원호 에지 생성
+            EdgeInfo arc_edge;
+            arc_edge.edgeId = "arc_edge_" + std::to_string(i);
+            arc_edge.startNodeId = tangent_in.nodeId;
+            arc_edge.endNodeId = tangent_out.nodeId;
+            arc_edge.maxSpeed = curr_edge.maxSpeed; // 기존 에지 속도 사용
+
+            new_edges.push_back(arc_edge);
+
+            // 기존 에지를 원호 출구점에 연결
+            EdgeInfo modified_edge = curr_edge;
+            modified_edge.startNodeId = tangent_out.nodeId;
+            new_edges.push_back(modified_edge);
+        }
+        else
+        {
+            // 원호 없는 에지, 그대로 추가
+            new_edges.push_back(edges[i]);
+            const NodeInfo* via_node = findNodeById(nodes, edges[i].endNodeId);
+            if (via_node)
+            {
+                new_nodes.push_back(*via_node);
+            }
+        }
+    }
+
+    while(1);
+
+
+    nodes_ = new_nodes;
+    edges_ = new_edges;
+
     cur_edge_idx_ = 0;
     is_angle_adjusting_ = false;
 
@@ -20,26 +210,13 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     {
         const std::string& target_node_id = edges_[cur_edge_idx_].endNodeId;
         auto it = std::find_if(nodes_.begin(), nodes_.end(),
-             [&](const NodeInfo& n){ return n.nodeId == target_node_id; });
+            [&](const NodeInfo& n){ return n.nodeId == target_node_id; });
         if (it != nodes_.end())
         {
             vcu_->setTargetPosition(it->x, it->y, it->theta);
         }
     }
 }
-
-// void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges)
-// {
-//     nodes_ = nodes;
-//     edges_ = edges;
-//     cur_idx_ = 0;
-//     if (!nodes_.empty() && vcu_)
-//     {
-//         // theta 값을 전달
-//         std::cout << "[Amr::setOrder] " << nodes_[0].x << " " << nodes_[0].y << " " << nodes_[0].theta << std::endl;
-//         vcu_->setTargetPosition(nodes_[0].x, nodes_[0].y, nodes_[0].theta);
-//     }
-// }
 
 std::string Amr::getState() const 
 {
