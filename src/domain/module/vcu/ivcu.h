@@ -10,7 +10,8 @@ class IVcu
 public:
     virtual ~IVcu() = default;
     virtual void setTargetPosition(double x, double y, double theta) = 0;
-    virtual void update(double dt) = 0;
+    // virtual void update(double dt) = 0;
+    virtual void update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) = 0;
 
     virtual void updateNodes(const std::vector<NodeInfo>& nodes) = 0;
     virtual void updateEdges(const std::vector<EdgeInfo>& edges) = 0;

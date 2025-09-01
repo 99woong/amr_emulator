@@ -21,7 +21,8 @@ public:
     std::string getState() const override;
     std::vector<NodeInfo> getNodes() const override { return nodes_; }
     std::size_t getCurIdx() const override { return cur_idx_; }
-    void step(double dt) override;
+    // void step(double dt) override;
+    void step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) override;  
 
     IVcu* getVcu() override;  
 private:

@@ -16,7 +16,8 @@ void Vcu::setTargetPosition(double x, double y, double theta)
     std::cout << "[VCU] Target position set to (" << x << ", " << y << "), theta=" << theta << std::endl;
 }
 
-void Vcu::update(double dt) 
+// void Vcu::update(double dt) 
+void Vcu::update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     double left_rpm, right_rpm;
     motor_->getRPM(left_rpm, right_rpm);
@@ -27,7 +28,8 @@ void Vcu::update(double dt)
     localizer_->getPose(current_x, current_y, current_theta);
 
     double linear_vel_cmd = 0.0, angular_vel_cmd = 0.0;
-    navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd);
+    // navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd);
+    navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd, other_robot_positions);
     motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
     motor_->update(dt);
 }

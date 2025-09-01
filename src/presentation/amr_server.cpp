@@ -56,7 +56,9 @@ void AmrServerApp::run(const std::string& config_path)
                     }
                 }
 
-                amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
+                // amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
+                amr->step(dt_control, other_positions);
+                ++idx;                
             }
             next_motor_update += dt_control;
         }

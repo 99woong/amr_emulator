@@ -243,7 +243,8 @@ IVcu* Amr::getVcu()
     return vcu_.get();
 }
 
-void Amr::step(double dt)
+// void Amr::step(double dt)
+void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     constexpr double reach_threshold = 0.01;
     constexpr double angle_threshold = 0.01;
@@ -252,7 +253,8 @@ void Amr::step(double dt)
     if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
         return;
 
-    vcu_->update(dt);
+    // vcu_->update(dt);
+    vcu_->update(dt, other_robot_positions);
 
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);

@@ -12,7 +12,8 @@ public:
     Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> nav, std::unique_ptr<ILocalizer> localizer);
     
     void setTargetPosition(double x, double y, double theta) override;
-    void update(double dt) override;
+    // void update(double dt) override;
+    void update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) override;
     void updateNodes(const std::vector<NodeInfo>& nodes) override;
     void updateEdges(const std::vector<EdgeInfo>& edges) override;
     void setInitialPose(double x, double y, double theta) override;
