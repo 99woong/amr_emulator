@@ -22,7 +22,7 @@ AmrManager::AmrManager(const AmrConfig& config)
 
         // 초기 위치 설정 (예: YAML config 선언 값 또는 하드코딩)
         double init_x = 0.0, init_y = 0.0, init_theta = 0.0;
-        
+    
         // if (!config.initial_poses.empty() && i < config.initial_poses.size()) 
         
         //     init_x = config.initial_poses[i].x;
@@ -81,22 +81,6 @@ bool AmrManager::isCustomTcpProtocolMessage(const std::string& msg)
 std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config)
 {
     auto motor = std::make_unique<MotorController>(config);
-
-    // auto acc_model = std::make_shared<DDAccelerationModel>(
-    //     config.amr_params.mass_vehicle,
-    //     config.amr_params.load_weight,
-    //     config.amr_params.max_torque,
-    //     config.amr_params.friction_coeff,
-    //     config.amr_params.max_speed,
-    //     config.amr_params.max_acceleration,
-    //     config.amr_params.max_deceleration,
-    //     config.amr_params.wheel_radius,                // 휠 반경은 amr_params에 있으므로 따로 넘김
-    //     config.amr_params.max_angular_acceleration,
-    //     config.amr_params.max_angular_deceleration
-    // );
-  
-    // motor->setAccelerationModel(acc_model);
-
 
     // 다이나믹스 파라미터 체크
     bool use_dyn_model = (config.amr_params.mass_vehicle > 0 &&

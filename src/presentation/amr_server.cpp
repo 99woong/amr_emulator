@@ -28,11 +28,34 @@ void AmrServerApp::run(const std::string& config_path)
         sim_time += dt_master * speedup;
         auto& amrs = manager.getAmrs();
 
+
+        
         // 내부 제어: dt_internal 마다 호출
         if (sim_time >= next_motor_update) 
         {
+            // 모든 AMR 위치 수집
+            std::vector<std::pair<double, double>> all_positions;
             for (auto& amr : amrs)
             {
+                double x=0, y=0, theta=0;
+                amr->getVcu()->getEstimatedPose(x, y, theta);
+                all_positions.emplace_back(x, y);
+            }
+
+            size_t idx = 0;
+            for (auto& amr : amrs)
+            {
+                std::vector<std::pair<double, double>> other_positions;
+                other_positions.reserve(all_positions.size() - 1);
+
+                for (size_t i = 0; i < all_positions.size(); ++i)
+                {
+                    if (i != idx)
+                    {
+                        other_positions.push_back(all_positions[i]);
+                    }
+                }
+
                 amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
             }
             next_motor_update += dt_control;
@@ -66,7 +89,7 @@ void AmrServerApp::run(const std::string& config_path)
                     auto* protocol = manager.getProtocol(i);
                     if (protocol)
                     {
-                        // std::cout << "publishVisualizationMessage" << std::endl;
+                        // std::cout << "publishVisualizationMessage : " << i << std::endl;
                         protocol->publishVisualizationMessage(amrs[i].get());
                     }
                 }

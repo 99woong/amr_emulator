@@ -15,6 +15,7 @@ struct AmrParams
     double max_deceleration;  // m/s^2    
     double max_angular_acceleration;  // m/s^2
     double max_angular_deceleration;  // m/s^2
+    double max_rpm_deviation;  //rpm noise level(standard deviation)
 };
 
 struct AmrConfig 

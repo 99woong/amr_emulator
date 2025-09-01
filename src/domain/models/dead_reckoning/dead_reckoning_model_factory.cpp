@@ -18,7 +18,7 @@ std::shared_ptr<ideadReckoningModel> DeadReckoningModelFactory::create(
         }
 
         std::cout << "success to set dr " << wheel_base << " " << wheel_radius << std::endl;
-        return std::make_shared<deadReckoningEuler>(wheel_base, wheel_radius);
+        return std::make_shared<deadReckoningEuler>(wheel_base, wheel_radius, config.amr_params.max_rpm_deviation);
     }
     // else if (model_type == "ackermann") 
     // {

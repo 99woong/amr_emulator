@@ -32,6 +32,7 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.amr_params.load_weight = config["amr_params"]["load_weight"].as<double>();
     cfg.amr_params.max_torque = config["amr_params"]["max_torque"].as<double>();
     cfg.amr_params.friction_coeff = config["amr_params"]["friction_coeff"].as<double>();
+    cfg.amr_params.max_rpm_deviation = config["amr_params"]["max_rpm_deviation"].as<double>();
 
     if(config["speedup_ratio"])
     {
@@ -45,6 +46,7 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.visualization_publish_period = config["visualization_publish_period"].as<double>();
     cfg.state_publish_period = config["state_publish_period"].as<double>();
     cfg.control_period = config["control_period"].as<double>();
+    cfg.dead_reckoning_model = config["dead_reckoning_model"].as<std::string>();
 
     return cfg;
 }

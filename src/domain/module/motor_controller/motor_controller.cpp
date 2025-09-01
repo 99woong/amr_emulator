@@ -43,7 +43,7 @@ void MotorController::update(double dt)
 {
     if (acceleration_model_) 
     {
-        // ✨ 가감속 모델을 사용하여 실제 속도 업데이트
+        // 가감속 모델을 사용하여 실제 속도 업데이트
         linear_vel_actual_ = acceleration_model_->applyAcceleration(linear_vel_actual_, linear_vel_cmd_, dt);
         angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(angular_vel_actual_, angular_vel_cmd_, dt);
     } 

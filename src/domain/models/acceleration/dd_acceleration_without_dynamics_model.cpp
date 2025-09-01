@@ -20,6 +20,8 @@ DDAccelerationWithoutDynamicsModel::DDAccelerationWithoutDynamicsModel(
 
 double DDAccelerationWithoutDynamicsModel::applyAcceleration(double current_speed, double target_speed, double dt) 
 {
+        // std::cout << "DDAccelerationWithoutDynamicsModel : " << max_acceleration_ << " " << max_deceleration_ << std::endl;
+
         double speed_diff = target_speed - current_speed;
         double max_delta = (speed_diff > 0 ? max_acceleration_ : max_deceleration_) * dt;
         if (speed_diff > max_delta)

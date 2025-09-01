@@ -40,6 +40,7 @@ void Vda5050Protocol::setAgvId(const std::string& agv_id)
     agv_id_ = agv_id;
     // vda_config_.refAgvDescription().agv_id = agv_id_;
     order_topic_ = "vda5050/agvs/" + agv_id + "/order";
+    std::cout << "set_order : " << order_topic_ << std::endl;
 
 }
 
@@ -303,6 +304,23 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         std::vector<NodeInfo> ordered_nodes;
         if (!edges.empty()) 
         {
+            // 최초 에지의 startNodeId 노드 위치를 AMR 초기 위치로 설정
+            const std::string& init_node_id = edges.front().startNodeId;
+            auto it = node_map.find(init_node_id);
+            if (it != node_map.end())
+            {
+                const NodeInfo& init_node = it->second;
+                amr->getVcu()->setInitialPose(init_node.x, init_node.y, init_node.theta);
+                
+                std::cout << "[Vda5050Protocol] Set AMR initial pose to node " << init_node_id
+                          << ": (" << init_node.x << ", " << init_node.y << ", " << init_node.theta << ")\n";
+            }
+            else
+            {
+                std::cerr << "[Vda5050Protocol] Initial node info missing: " << init_node_id << std::endl;
+            }
+
+
             std::string current_node_id = edges.front().startNodeId;
             std::cout << "load edge : " << current_node_id << std::endl;
             ordered_nodes.push_back(node_map[current_node_id]);

@@ -121,14 +121,27 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     std::vector<NodeInfo> new_nodes;
     std::vector<EdgeInfo> new_edges;
 
-    new_nodes.push_back(nodes.front());
 
+    // 첫 번째 에지의 startNodeId로 초기 위치 설정
+    const NodeInfo* start_node = findNodeById(nodes, edges.front().startNodeId);
+    if (start_node)
+    {
+        new_nodes.push_back(*start_node);
+    }
+    else
+    {
+        new_nodes.push_back(nodes.front());
+    }
+    // new_nodes.push_back(nodes.front());
+
+    // for (size_t i = 0; i < edges.size(); ++i)
     for (size_t i = 0; i < edges.size(); ++i)
     {
         const EdgeInfo& prev_edge = edges[i-1];
         const EdgeInfo& curr_edge = edges[i];
 
-        if (curr_edge.turnCenter.x != 0.0 || curr_edge.turnCenter.y != 0.0)
+        // if (curr_edge.turnCenter.x != 0.0 || curr_edge.turnCenter.y != 0.0)
+        if (0)
         {
             NodeInfo center;
             center.x = curr_edge.turnCenter.x;
@@ -197,7 +210,7 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
         }
     }
 
-    while(1);
+    // while(1);
 
 
     nodes_ = new_nodes;
@@ -263,7 +276,8 @@ void Amr::step(double dt)
     // maxSpeed를 MotorController에 설정
     vcu_->getMotor().setMaxSpeed(cur_edge.maxSpeed);
     
-    std::cout << "dist : " << dist << " dtheta : " << dtheta << std::endl;
+    // std::cout << "dist : " << dist << " dtheta : " << dtheta << std::endl;
+    
     if (!is_angle_adjusting_)
     {
         if (dist < reach_threshold)

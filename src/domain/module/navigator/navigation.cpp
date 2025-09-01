@@ -6,7 +6,7 @@
 
 constexpr double PI = 3.14159265358979323846;
 
-Navigation::Navigation() : target_x_(0), target_y_(0) 
+Navigation::Navigation() : target_x_(50), target_y_(50) 
 {
 
 }
