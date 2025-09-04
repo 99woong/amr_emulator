@@ -121,7 +121,6 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     std::vector<NodeInfo> new_nodes;
     std::vector<EdgeInfo> new_edges;
 
-
     // 첫 번째 에지의 startNodeId로 초기 위치 설정
     const NodeInfo* start_node = findNodeById(nodes, edges.front().startNodeId);
     if (start_node)
@@ -132,81 +131,18 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     {
         new_nodes.push_back(nodes.front());
     }
-    // new_nodes.push_back(nodes.front());
 
-    // for (size_t i = 0; i < edges.size(); ++i)
     for (size_t i = 0; i < edges.size(); ++i)
     {
         const EdgeInfo& prev_edge = edges[i-1];
         const EdgeInfo& curr_edge = edges[i];
 
-        // if (curr_edge.turnCenter.x != 0.0 || curr_edge.turnCenter.y != 0.0)
-        if (0)
-        {
-            NodeInfo center;
-            center.x = curr_edge.turnCenter.x;
-            center.y = curr_edge.turnCenter.y;
-            double R = wheel_base / std::tan(30.0 * M_PI / 180.0); // 최대 조향각 30도 사용 예시
-
-            std::cout << "R : " << R << " wheel_base : " << wheel_base << std::endl;
-
-            const NodeInfo* start_node = findNodeById(nodes, prev_edge.startNodeId);
-            const NodeInfo* via_node = findNodeById(nodes, prev_edge.endNodeId);   
-            const NodeInfo* end_node = findNodeById(nodes, curr_edge.endNodeId);
-
-            if (!start_node || !via_node || !end_node)
-            {
-                // 노드가 없으면 다음 루프
-                continue;
-            }
-
-            std::cout << "start_node : " << start_node->x << " " <<  start_node->y << std::endl;
-            std::cout << "via_node : " << via_node->x << " " <<  via_node->y << std::endl;
-            std::cout << "end_node : " << end_node->x << " " <<  end_node->y << std::endl;
-            Line line1 = getLineFromPoints(*start_node, *via_node);
-            std::cout << "line1 : " << line1.A << " " << line1.B << " "<< line1.C << " " << std::endl;
-
-            // NodeInfo tangent_in = calculateTangentPoint(line1, center, R, true);
-            NodeInfo tangent_in = calculateTangentPoint(line1, center, R, *start_node, false);
-
-
-            Line line2 = getLineFromPoints(*via_node, *end_node);
-            // NodeInfo tangent_out = calculateTangentPoint(line2, center, R, false);
-            NodeInfo tangent_out = calculateTangentPoint(line2, center, R, *end_node, false);
-
-            std::cout << "tangent_in : " << tangent_in.x << " " << tangent_in.y << std::endl;
-            std::cout << "tangent_out : " << tangent_out.x << " " << tangent_out.y << std::endl;
-        
-
-            tangent_in.nodeId = "arc_in_" + std::to_string(i);
-            tangent_out.nodeId = "arc_out_" + std::to_string(i);
-
-            new_nodes.push_back(tangent_in);
-            new_nodes.push_back(tangent_out);
-
-            // 원호 에지 생성
-            EdgeInfo arc_edge;
-            arc_edge.edgeId = "arc_edge_" + std::to_string(i);
-            arc_edge.startNodeId = tangent_in.nodeId;
-            arc_edge.endNodeId = tangent_out.nodeId;
-            arc_edge.maxSpeed = curr_edge.maxSpeed; // 기존 에지 속도 사용
-
-            new_edges.push_back(arc_edge);
-
-            // 기존 에지를 원호 출구점에 연결
-            EdgeInfo modified_edge = curr_edge;
-            modified_edge.startNodeId = tangent_out.nodeId;
-            new_edges.push_back(modified_edge);
-        }
-        else
-        {
             // 원호 없는 에지, 그대로 추가
-            new_edges.push_back(edges[i]);
-            const NodeInfo* via_node = findNodeById(nodes, edges[i].endNodeId);
-            if (via_node)
-            {
-                new_nodes.push_back(*via_node);
-            }
+        new_edges.push_back(edges[i]);
+        const NodeInfo* via_node = findNodeById(nodes, edges[i].endNodeId);
+        if (via_node)
+        {
+            new_nodes.push_back(*via_node);
         }
     }
 

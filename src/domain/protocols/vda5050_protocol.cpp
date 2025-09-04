@@ -281,9 +281,8 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.maxSpeed = edge.value("maxSpeed", 0.0);
             if (edge.contains("turnCenter"))
             {
-                e.turnCenter.x = edge["turnCenter"].value("x", 0.0);
-                e.turnCenter.y = edge["turnCenter"].value("y", 0.0);
-            }            
+                e.turnCenter = edge.value("turnCenter", "");
+            }
             
             edges.push_back(e);
 
@@ -291,14 +290,20 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             
             if (edge.contains("turnCenter"))
             {
-                std::cout << " Center_x : " << e.turnCenter.x << " Center_y : " << e.turnCenter.y << std::endl; 
+                std::cout << " Center_ID : " << e.turnCenter << std::endl; 
             }           
         }
+
+        for(int i=0;i<edges.size();i++)
+            std::cout << "edge_ id : " << edges[i].edgeId << std::endl;
 
         std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
         {
             return a.sequenceId < b.sequenceId;
         });
+
+        for(int i=0;i<edges.size();i++)
+            std::cout << "[after] edge_ id : " << edges[i].edgeId << std::endl;
 
         // 3) edges를 따라 순차적 노드 경로 리스트 생성
         std::vector<NodeInfo> ordered_nodes;

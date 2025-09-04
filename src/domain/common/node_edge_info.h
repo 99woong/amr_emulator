@@ -27,7 +27,7 @@ struct EdgeInfo
     std::string startNodeId;
     std::string endNodeId;
     double maxSpeed;
-    PositionInfo turnCenter;
+    std::string turnCenter;
 
     EdgeInfo() : sequenceId(0),maxSpeed(0.0) {}
 };

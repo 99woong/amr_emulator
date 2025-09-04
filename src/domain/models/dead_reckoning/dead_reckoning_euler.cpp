@@ -16,22 +16,6 @@ void deadReckoningEuler::setInitialPose(double x, double y, double theta)
     x_ = x; y_ = y; theta_ = theta;
 }
 
-// void deadReckoningEuler::update(double left_rpm, double right_rpm, double dt) 
-// {
-//     // std::cout <<"dr lrpm : " << left_rpm << " rrpm : " << right_rpm <<std::endl;
-//     double v_l = (left_rpm / 60.0) * 2.0 * PI * wheel_radius_;
-//     double v_r = (right_rpm / 60.0) * 2.0 * PI * wheel_radius_;
-//     // std::cout <<"dr v_l : " << v_l << " v_r : " << v_r <<std::endl;
-
-//     double v = (v_r + v_l) / 2.0;
-//     double w = (v_r - v_l) / wheel_base_;
-
-//     // std::cout <<"v : " << v << " w : " << w <<std::endl;
-//     x_ += v * std::cos(theta_) * dt;
-//     y_ += v * std::sin(theta_) * dt;
-//     theta_ += w * dt;
-// }
-
 void deadReckoningEuler::update(double left_rpm, double right_rpm, double dt) 
 {
     // std::cout << "noise_dist_ : " << noise_dist_(generator_) << std::endl;
@@ -52,6 +36,8 @@ void deadReckoningEuler::update(double left_rpm, double right_rpm, double dt)
     y_ += v * std::sin(theta_) * dt;
     theta_ += w * dt;
 }
+
+
 
 void deadReckoningEuler::getPose(double& x, double& y, double& theta) const 
 {

@@ -1,4 +1,5 @@
 #include "amr_manager.h"
+#include "sd_acceleration_model.h" 
 #include "dd_acceleration_model.h" 
 #include "dd_acceleration_without_dynamics_model.h" 
 #include "motor_controller.h"
@@ -91,15 +92,23 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
     if (use_dyn_model) 
     {
         std::cout << " acc model : acc_model" << std::endl;
-        auto acc_model = std::make_shared<DDAccelerationModel>(
-            config.amr_params.mass_vehicle,
-            config.amr_params.load_weight,
-            config.amr_params.max_torque,
-            config.amr_params.friction_coeff,
-            config.amr_params.max_speed,
+        
+        // auto acc_model = std::make_shared<DDAccelerationModel>(
+        //     config.amr_params.mass_vehicle,
+        //     config.amr_params.load_weight,
+        //     config.amr_params.max_torque,
+        //     config.amr_params.friction_coeff,
+        //     config.amr_params.max_speed,
+        //     config.amr_params.max_acceleration,
+        //     config.amr_params.max_deceleration,
+        //     config.amr_params.wheel_radius,
+        //     config.amr_params.max_angular_acceleration,
+        //     config.amr_params.max_angular_deceleration
+        // ); //dd type
+
+        auto acc_model = std::make_shared<SDAccelerationModel>(
             config.amr_params.max_acceleration,
             config.amr_params.max_deceleration,
-            config.amr_params.wheel_radius,
             config.amr_params.max_angular_acceleration,
             config.amr_params.max_angular_deceleration
         );
