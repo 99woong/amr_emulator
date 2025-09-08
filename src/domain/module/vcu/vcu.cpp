@@ -1,5 +1,6 @@
 #include "vcu.h"
 #include <iostream> 
+#include <cmath>
 
 Vcu::Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> nav, std::unique_ptr<ILocalizer> localizer)
     : motor_(std::move(motor)), navigation_(std::move(nav)), localizer_(std::move(localizer)), target_x_(0), target_y_(0) 
@@ -7,13 +8,46 @@ Vcu::Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> n
 
 }
 
-void Vcu::setTargetPosition(double x, double y, double theta)
+void Vcu::setTargetPosition(double start_x, double start_y, double target_x, double target_y, double target_theta, double center_x, double center_y, bool hasTurnCenter, double wheel_base)
 {
-    target_x_ = x;
-    target_y_ = y;
-    target_theta_ = theta;  // 목표 방향 추가 저장
-    navigation_->setTarget(x, y, theta);
-    std::cout << "[VCU] Target position set to (" << x << ", " << y << "), theta=" << theta << std::endl;
+    target_x_ = target_x;
+    target_y_ = target_y;
+    target_theta_ = target_theta;  // 목표 방향 추가 저장
+    std::cout << " 21 "<<std::endl;
+
+    if(!hasTurnCenter)
+    {
+        navigation_->setTarget(target_x_, target_y_, target_theta_);
+        std::cout << "[VCU] Target position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        std::cout << " 22 "<<std::endl;
+    }
+    else
+    {
+        std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        // double radius = std::hypot(target_x - center_x, start_y - center_y);
+        double radius = 25.99;
+        double start_angle = std::atan2(start_y - center_y, start_x - center_x);
+        double end_angle = std::atan2(target_y - center_y, target_x - center_x);
+        bool clockwise = false;
+        
+        std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
+
+        navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
+    }
+}
+
+void Vcu::setTargetArc(double start_x, double start_y, double center_x,
+    double center_y, double end_x, double end_y, double wheeBase)
+{
+    
+    double radius = std::hypot(start_x - center_x, start_y - center_y);
+    double start_angle = std::atan2(start_y - center_y, start_x - center_x);
+    double end_angle = std::atan2(end_y - center_y, end_x - center_x);
+    bool clockwise = false; 
+
+    navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
 }
 
 // void Vcu::update(double dt) 

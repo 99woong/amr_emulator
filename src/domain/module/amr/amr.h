@@ -28,6 +28,7 @@ public:
 private:
     int id_;
     bool is_angle_adjusting_ = false;
+    double wheel_base_;
     std::vector<NodeInfo> nodes_;
     std::vector<EdgeInfo> edges_;
     std::size_t cur_idx_ = 0;
@@ -38,4 +39,5 @@ private:
     // NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint); 
     NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, const NodeInfo& ref, bool preferCloser); 
     const NodeInfo* findNodeById(const std::vector<NodeInfo>& nodes, const std::string& id);
+    void setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base);
 };

@@ -279,19 +279,18 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.startNodeId = edge.value("startNodeId", "");
             e.endNodeId = edge.value("endNodeId", "");
             e.maxSpeed = edge.value("maxSpeed", 0.0);
-            if (edge.contains("turnCenter"))
+            
+            if (edge.contains("turnCenter") && edge["turnCenter"].is_object())
             {
-                e.turnCenter = edge.value("turnCenter", "");
+                e.has_turn_center = true;
+                e.turn_center_x = edge["turnCenter"].value("x", 0.0);
+                e.turn_center_y = edge["turnCenter"].value("y", 0.0);
+                std::cout << " Center : (" << e.turn_center_x << ", " << e.turn_center_y << ")" << std::endl;
             }
             
             edges.push_back(e);
 
-            std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;
-            
-            if (edge.contains("turnCenter"))
-            {
-                std::cout << " Center_ID : " << e.turnCenter << std::endl; 
-            }           
+            std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;            
         }
 
         for(int i=0;i<edges.size();i++)

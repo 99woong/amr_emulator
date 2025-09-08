@@ -9,61 +9,64 @@ Amr::Amr(int id, std::unique_ptr<Vcu> vcu) : id_(id), vcu_(std::move(vcu)), cur_
 
 }
 
-// void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges)
-// {
-//     nodes_ = nodes;
-//     edges_ = edges;
-//     cur_edge_idx_ = 0;
-//     is_angle_adjusting_ = false;
-
-//     if (!edges_.empty() && vcu_)
-//     {
-//         const std::string& target_node_id = edges_[cur_edge_idx_].endNodeId;
-//         auto it = std::find_if(nodes_.begin(), nodes_.end(),
-//              [&](const NodeInfo& n){ return n.nodeId == target_node_id; });
-//         if (it != nodes_.end())
-//         {
-//             vcu_->setTargetPosition(it->x, it->y, it->theta);
-//         }
-//     }
-// }
-
-Line Amr::getLineFromPoints(const NodeInfo& p1, const NodeInfo& p2) 
+void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base)
 {
-    double A = p2.y - p1.y;
-    double B = p1.x - p2.x;
-    double C = p2.x * p1.y - p1.x * p2.y;
-    
-    return {A, B, C};
+    // target_node 찾기
+    std::cout << "set edge id : " << edge.edgeId << std::endl;
+    const NodeInfo* target_node = nullptr;
+    const NodeInfo* start_node = nullptr;
+    auto it = std::find_if(nodes.begin(), nodes.end(),
+        [&](const NodeInfo& n) { return n.nodeId == edge.endNodeId; });
+    if (it != nodes.end())
+        target_node = &(*it);
+
+    auto sit = std::find_if(nodes.begin(), nodes.end(),
+        [&](const NodeInfo& n) { return n.nodeId == edge.startNodeId; });
+    if (sit != nodes.end())
+        start_node = &(*sit);
+
+
+    if(edge.has_turn_center) {
+        vcu_->setTargetPosition(
+            start_node ? start_node->x : 0.0,
+            start_node ? start_node->y : 0.0,
+            target_node ? target_node->x : 0.0,
+            target_node ? target_node->y : 0.0,
+            target_node ? target_node->theta : 0.0,
+            edge.turn_center_x,
+            edge.turn_center_y,
+            true,
+            wheel_base
+        );
+    } else {
+        vcu_->setTargetPosition(
+            start_node ? start_node->x : 0.0,
+            start_node ? start_node->y : 0.0,
+            target_node ? target_node->x : 0.0,
+            target_node ? target_node->y : 0.0,
+            target_node ? target_node->theta : 0.0,
+            0.0, 0.0, false, wheel_base
+        );
+    }
 }
 
-// // 원호 접점 계산 함수 (직선과 원 중심, 반경으로)
-// NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint) 
-// {
-//     double A = line.A, B = line.B, C = line.C;
-//     double x0 = center.x;
-//     double y0 = center.y;
-//     double base = A*A + B*B;
-//     double D = radius*radius*base - C*C;
-//     NodeInfo pt;
 
-//     if (D < 0) 
-//     {
-//         // 접선 없음. fallback 처리 필요
-//         pt.x = x0; pt.y = y0;
-//     } 
-//     else 
-//     {
-//         double sqrtD = std::sqrt(D);
-//         double sign = firstPoint ? 1.0 : -1.0;
-        
-//         pt.x = (A*(A*x0 + B*y0) - B*(C + sign*sqrtD)) / base;
-//         pt.y = (B*(A*x0 + B*y0) + A*(C + sign*sqrtD)) / base;
-//     }
-    
-//     pt.theta = 0.0; // 필요시 계산
-//     return pt;
-// }
+void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base)
+{
+    nodes_ = nodes;
+    edges_ = edges;
+    cur_edge_idx_ = 0;
+    is_angle_adjusting_ = false;
+    wheel_base_ = wheel_base;
+
+    if (!edges_.empty() && vcu_)
+    {
+        const EdgeInfo& edge = edges_[cur_edge_idx_];
+
+        setVcuTargetFromEdge(edge, nodes_, wheel_base);
+    }
+}
+
 
 NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, 
                                     const NodeInfo& ref, bool preferCloser) 
@@ -116,57 +119,6 @@ const NodeInfo* Amr::findNodeById(const std::vector<NodeInfo>& nodes, const std:
     return (it != nodes.end()) ? &(*it) : nullptr;
 }
 
-void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base)
-{
-    std::vector<NodeInfo> new_nodes;
-    std::vector<EdgeInfo> new_edges;
-
-    // 첫 번째 에지의 startNodeId로 초기 위치 설정
-    const NodeInfo* start_node = findNodeById(nodes, edges.front().startNodeId);
-    if (start_node)
-    {
-        new_nodes.push_back(*start_node);
-    }
-    else
-    {
-        new_nodes.push_back(nodes.front());
-    }
-
-    for (size_t i = 0; i < edges.size(); ++i)
-    {
-        const EdgeInfo& prev_edge = edges[i-1];
-        const EdgeInfo& curr_edge = edges[i];
-
-            // 원호 없는 에지, 그대로 추가
-        new_edges.push_back(edges[i]);
-        const NodeInfo* via_node = findNodeById(nodes, edges[i].endNodeId);
-        if (via_node)
-        {
-            new_nodes.push_back(*via_node);
-        }
-    }
-
-    // while(1);
-
-
-    nodes_ = new_nodes;
-    edges_ = new_edges;
-
-    cur_edge_idx_ = 0;
-    is_angle_adjusting_ = false;
-
-    if (!edges_.empty() && vcu_)
-    {
-        const std::string& target_node_id = edges_[cur_edge_idx_].endNodeId;
-        auto it = std::find_if(nodes_.begin(), nodes_.end(),
-            [&](const NodeInfo& n){ return n.nodeId == target_node_id; });
-        if (it != nodes_.end())
-        {
-            vcu_->setTargetPosition(it->x, it->y, it->theta);
-        }
-    }
-}
-
 std::string Amr::getState() const 
 {
     if (nodes_.empty()) 
@@ -178,6 +130,8 @@ IVcu* Amr::getVcu()
 {
     return vcu_.get();
 }
+
+
 
 // void Amr::step(double dt)
 void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
@@ -195,17 +149,17 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);
 
-    const auto& cur_edge = edges_[cur_edge_idx_];
+    const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
+    const NodeInfo* target_node = nullptr;
+
     auto it = std::find_if(nodes_.begin(), nodes_.end(),
-        [&](const NodeInfo& n){ return n.nodeId == cur_edge.endNodeId; });
-    if (it == nodes_.end())
-        return;
+        [&](const NodeInfo& n) { return n.nodeId == cur_edge.endNodeId; });
+    if (it != nodes_.end())
+        target_node = &(*it);
 
-    const NodeInfo& target_node = *it;
-
-    double dx = target_node.x - cur_x;
-    double dy = target_node.y - cur_y;
-    double dtheta = target_node.theta - cur_theta;
+    double dx = target_node->x - cur_x;
+    double dy = target_node->y - cur_y;
+    double dtheta = target_node->theta - cur_theta;
     while (dtheta > PI) dtheta -= 2.0 * PI;
     while (dtheta < -PI) dtheta += 2.0 * PI;
 
@@ -221,8 +175,30 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         if (dist < reach_threshold)
         {
             is_angle_adjusting_ = true;
-            // set the target angle
-            vcu_->setTargetPosition(cur_x, cur_y, target_node.theta);
+
+            if(cur_edge.has_turn_center) 
+            {
+                vcu_->setTargetPosition(
+                    0.0,0.0,
+                    cur_x,
+                    cur_y,
+                    target_node ? target_node->theta : 0.0,
+                    cur_edge.turn_center_x,
+                    cur_edge.turn_center_y,
+                    true,
+                    wheel_base_
+                );
+            } 
+            else 
+            {
+                vcu_->setTargetPosition(
+                    0.0,0.0,
+                    cur_x,
+                    cur_y,
+                    target_node ? target_node->theta : 0.0,
+                    0.0, 0.0, false, wheel_base_
+                );
+            }    
         }
     }
     else
@@ -240,19 +216,9 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
                 cur_edge_idx_ = 0;
                 return;
             }
+            const EdgeInfo& next_edge = edges_[cur_edge_idx_];
 
-            const auto& next_edge = edges_[cur_edge_idx_];
-
-            auto next_it = std::find_if(nodes_.begin(), nodes_.end(), [&](const NodeInfo& n)
-                { 
-                    return n.nodeId == next_edge.endNodeId; 
-                });
-
-            if (next_it != nodes_.end())
-            {
-                // set the next position
-                vcu_->setTargetPosition(next_it->x, next_it->y, next_it->theta);
-            }
+            setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
         }
     }
 }

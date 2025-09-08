@@ -9,7 +9,9 @@ class IVcu
 {
 public:
     virtual ~IVcu() = default;
-    virtual void setTargetPosition(double x, double y, double theta) = 0;
+    virtual void setTargetPosition(double start_x, double start_y, double target_x, double target_y, double target_theta, double center_x, double center_y, bool hasTurnCenter, double wheel_base) = 0;
+    virtual void setTargetArc(double start_x, double start_y, double center_x, double center_y, double end_x, double end_y, double wheeBase) = 0;
+
     // virtual void update(double dt) = 0;
     virtual void update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) = 0;
 
