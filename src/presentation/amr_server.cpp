@@ -27,9 +27,7 @@ void AmrServerApp::run(const std::string& config_path)
     {
         sim_time += dt_master * speedup;
         auto& amrs = manager.getAmrs();
-
-
-        
+       
         // 내부 제어: dt_internal 마다 호출
         if (sim_time >= next_motor_update) 
         {

@@ -46,7 +46,8 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.visualization_publish_period = config["visualization_publish_period"].as<double>();
     cfg.state_publish_period = config["state_publish_period"].as<double>();
     cfg.control_period = config["control_period"].as<double>();
-    cfg.dead_reckoning_model = config["dead_reckoning_model"].as<std::string>();
+    // cfg.dead_reckoning_model = config["dead_reckoning_model"].as<std::string>();
+    cfg.vehicle_type = config["vehicle_type"].as<std::string>();
 
     return cfg;
 }

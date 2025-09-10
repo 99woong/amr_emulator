@@ -25,6 +25,11 @@ private:
     double wheel_base_, max_speed_, max_angular_speed_, wheel_radius_;
     double max_accel_, max_angular_accel_;
 
+    double front_wheel_speed_cmd_, steering_angle_cmd_ ;
+    double front_linear_vel_actual_, steering_angular_vel_actual_;
+    double front_wheel_rpm;
+    double max_steering_angle_;
+
     void calculateWheelSpeeds(double linear_vel, double angular_vel, double& left_speed, double& right_speed) const;
     void convertWheelSpeedToRPM(double wheel_speed, double& rpm) const;
 };

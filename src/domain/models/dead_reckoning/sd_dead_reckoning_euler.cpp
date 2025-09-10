@@ -18,20 +18,29 @@ void SDdeadReckoningEuler::setInitialPose(double x, double y, double theta)
 
 void SDdeadReckoningEuler::update(double rpm, double steering_angle, double dt) 
 {
-    // std::cout << "noise_dist_ : " << noise_dist_(generator_) << std::endl;
-
-    double noisy_rpm = rpm + noise_dist_(generator_);
+    // double noisy_rpm = rpm + noise_dist_(generator_);
 
     // std::cout <<"dr lrpm : " << left_rpm << " rrpm : " << right_rpm <<std::endl;
-    double v = (noisy_rpm / 60.0) * 2.0 * PI * wheel_radius_;
+
+    double v = (2.0 * M_PI * wheel_radius_ * rpm) / 60.0;
+    
+    std::cout << "pure v : " << v << std::endl;
+
+    v += noise_dist_(generator_);
+
+    std::cout << "v : " << v << std::endl;
+
+    // double v = rpm + noise_dist_(generator_);
     double w = v / wheel_base_ * std::tan(steering_angle);
 
     // std::cout <<"v : " << v << " w : " << w <<std::endl;
     x_ += v * std::cos(theta_) * dt;
     y_ += v * std::sin(theta_) * dt;
     theta_ += w * dt;
-}
 
+    std::cout << "[1SDdeadReckoningEuler] : " << rpm << " " << steering_angle << 
+                " " << x_ << " " << y_ << " " << theta_ << std::endl;
+}
 
 
 void SDdeadReckoningEuler::getPose(double& x, double& y, double& theta) const 

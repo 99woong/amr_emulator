@@ -6,6 +6,7 @@
 
 #include "idead_reckoning.h"
 #include "dead_reckoning_euler.h"
+#include "sd_dead_reckoning_euler.h"
 
 class DeadReckoningModelFactory 
 {

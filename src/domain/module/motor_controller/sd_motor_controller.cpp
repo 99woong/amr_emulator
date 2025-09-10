@@ -8,7 +8,7 @@ using namespace std;
 SDMotorController::SDMotorController(const AmrConfig& config)
     : linear_vel_cmd_(0), angular_vel_cmd_(0),
       linear_vel_actual_(0), angular_vel_actual_(0),
-      left_rpm_(0.0), right_rpm_(0.0),
+      left_rpm_(0.0), right_rpm_(0.0), steering_angle_cmd_(0.0), front_wheel_speed_cmd_(0.0), max_steering_angle_(30.0),
       wheel_base_(config.amr_params.wheel_base), max_speed_(config.amr_params.max_speed), max_angular_speed_(config.amr_params.max_angular_speed),
       wheel_radius_(config.amr_params.wheel_radius)
 {
@@ -27,40 +27,64 @@ void SDMotorController::setMaxSpeed(double max_speed)
     max_speed_ = max_speed;
 }
 
+// void SDMotorController::setVelocity(double linear, double angular) 
+// {
+//     // cout << "[MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
+    
+//     linear_vel_cmd_ = linear;
+//     angular_vel_cmd_ = angular;
+
+//     // 최대 속도 제한
+//     linear_vel_cmd_ = std::clamp(linear_vel_cmd_, -max_speed_, max_speed_);
+
+//     if (std::abs(linear_vel_cmd_) > 1e-5)
+//     {
+//         constexpr double max_steering_angle_rad = 30.0 * M_PI / 180.0; // 30도 -> 라디안
+//         angular_vel_cmd_ = std::clamp(std::atan((angular*2) * wheel_base_ / linear_vel_cmd_), -max_angular_speed_, max_angular_speed_);
+//     }
+//     else
+//     {
+//         angular_vel_cmd_ = 0.0;
+//     }
+// }
+
 void SDMotorController::setVelocity(double linear, double angular) 
 {
-    // cout << "[MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
+    cout << "[SD_MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
     
-    linear_vel_cmd_ = linear;
-    angular_vel_cmd_ = angular;
-
-    // 최대 속도 제한
-    linear_vel_cmd_ = std::clamp(linear_vel_cmd_, -max_speed_, max_speed_);
-
-    if (std::abs(linear_vel_cmd_) > 1e-5)
+    if (std::abs(linear) > 1e-5) 
     {
-        constexpr double max_steering_angle_rad = 30.0 * M_PI / 180.0; // 30도 -> 라디안
-        angular_vel_cmd_ = std::clamp(std::atan(angular * wheel_base_ / linear_vel_cmd_), -max_angular_speed_, max_angular_speed_);
-    }
-    else
+        steering_angle_cmd_ = std::atan(wheel_base_ * angular / linear);
+    } 
+    else 
     {
-        angular_vel_cmd_ = 0.0;
+        steering_angle_cmd_ = 0.0;
     }
+
+    front_wheel_speed_cmd_ = linear; 
+    // 제한 걸기
+    steering_angle_cmd_ = std::clamp(steering_angle_cmd_, -max_steering_angle_, max_steering_angle_);
+    front_wheel_speed_cmd_ = std::clamp(front_wheel_speed_cmd_, -max_speed_, max_speed_);    
+    
+    cout << "[SD_MotorController::setVelocity] " << steering_angle_cmd_ << " " <<front_wheel_speed_cmd_ << endl; 
+
 }
     
+
 void SDMotorController::update(double dt) 
 {
-    if (acceleration_model_) 
+    // if (acceleration_model_) 
+    if (0) 
     {
         // 가감속 모델을 사용하여 실제 속도 업데이트
-        linear_vel_actual_ = acceleration_model_->applyAcceleration(linear_vel_actual_, linear_vel_cmd_, dt);
-        angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(angular_vel_actual_, angular_vel_cmd_, dt);
+        front_linear_vel_actual_ = acceleration_model_->applyAcceleration(front_linear_vel_actual_, front_wheel_speed_cmd_, dt);
+        steering_angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(steering_angular_vel_actual_, steering_angle_cmd_, dt);
     } 
     else 
     {
         // 가감속 모델이 설정되지 않았다면, 목표 속도로 즉시 변경 (디버그 또는 폴백)
-        linear_vel_actual_ = linear_vel_cmd_;
-        angular_vel_actual_ = angular_vel_cmd_;
+        front_linear_vel_actual_ = front_wheel_speed_cmd_;
+        steering_angular_vel_actual_ = steering_angle_cmd_;
         std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
 
@@ -69,40 +93,48 @@ void SDMotorController::update(double dt)
 
     // 실제 휠 속도 계산 (차동 구동 로봇 기준)
     double left_wheel_speed, right_wheel_speed;
-    calculateWheelSpeeds(linear_vel_actual_, angular_vel_actual_, left_wheel_speed, right_wheel_speed);
 
+    left_wheel_speed = front_linear_vel_actual_;
+    right_rpm_ = steering_angular_vel_actual_;
+    
     // 휠 속도를 RPM으로 변환
     convertWheelSpeedToRPM(left_wheel_speed, left_rpm_);
-    convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
+    // convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
 
     // 디버그 출력
-    // std::cout << "MotorController Update: "
-    //           << "Cmd Lin: " << linear_vel_cmd_ << "m/s, "
-    //           << "Actual Lin: " << linear_vel_actual_ << "m/s, "
-    //           << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
-    //           << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
-    //           << "Left RPM: " << left_rpm_ << ", "
-    //           << "Right RPM: " << right_rpm_ << std::endl;
+    std::cout << "MotorController Update: "
+              << "left_wheel_speed: " << left_wheel_speed << "m/s, "
+              << "right_rpm_: " << right_rpm_ << "m/s, "
+              << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
+              << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
+              << "Left RPM: " << left_rpm_ << ", "
+              << "Right RPM: " << right_rpm_ << std::endl;
 }
 
-void SDMotorController::getRPM(double& left_rpm, double& right_rpm) const 
+void SDMotorController::getRPM(double& front_wheel_rpm, double& front_steering_angle) const 
 {
-    left_rpm = left_rpm_;
-    right_rpm = right_rpm_;
+    front_wheel_rpm = left_rpm_;
+    front_steering_angle = right_rpm_;
 }
 
 void SDMotorController::calculateWheelSpeeds(double linear_vel, double angular_vel, double& left_speed, double& right_speed) const 
 {
-    left_speed = linear_vel - (angular_vel * wheel_base_ / 2.0);
-    right_speed = linear_vel + (angular_vel * wheel_base_ / 2.0);
+    // return (front_wheel_speed_cmd_ / (2.0 * M_PI * wheel_radius_)) * 60.0;
 }
 
 void SDMotorController::convertWheelSpeedToRPM(double wheel_speed, double& rpm) const 
 {
-    if (wheel_radius_ > 0) {
+    if (wheel_radius_ > 0) 
+    {
         rpm = (wheel_speed / (2.0 * M_PI * wheel_radius_)) * 60.0;
-    } else {
+    } 
+    else
+    {
         rpm = 0.0;
         std::cerr << "Error: Wheel radius is zero or negative when converting to RPM." << std::endl;
     }
+
+    std::cout << "[convertWheelSpeedToRPM] : " << wheel_speed << " " << rpm << std::endl;
+
 }
+

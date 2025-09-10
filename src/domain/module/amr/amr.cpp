@@ -137,8 +137,10 @@ IVcu* Amr::getVcu()
 void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     constexpr double reach_threshold = 0.01;
-    constexpr double angle_threshold = 0.01;
+    constexpr double angle_threshold = 0.1;
     constexpr double PI = 3.14159265358979323846;
+    static double reach_distance_radius = 0.1;
+    static double angle_area_radius = 0.1;
 
     if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
         return;
@@ -168,11 +170,24 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     // maxSpeed를 MotorController에 설정
     vcu_->getMotor().setMaxSpeed(cur_edge.maxSpeed);
     
-    // std::cout << "dist : " << dist << " dtheta : " << dtheta << std::endl;
+    std::cout << "dist : " << dist << " dtheta : " << dtheta << " tx : " << target_node->x << " cx : " << cur_x << " ty : " << target_node->y << " cy : " << cur_y << " tt : " << target_node->theta << " ct : " << cur_theta << std::endl;
+
+    if(cur_edge.has_turn_center)
+    {
+        reach_distance_radius = 1.0;
+        angle_area_radius = 1.0;
+    }
+    else
+    {
+        reach_distance_radius = 0.1;
+        angle_area_radius = 0.1;
+    }
+    std::cout << "turn_center : " << cur_edge.has_turn_center <<  " " << reach_distance_radius <<" " <<  angle_area_radius << std::endl;
     
     if (!is_angle_adjusting_)
     {
-        if (dist < reach_threshold)
+        // if (dist < reach_threshold)
+        if (dist < reach_distance_radius)
         {
             is_angle_adjusting_ = true;
 
@@ -203,7 +218,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     }
     else
     {
-        if (std::fabs(dtheta) < angle_threshold)
+        if ((std::fabs(dtheta) < angle_threshold) || cur_edge.has_turn_center)
         {
             cur_edge_idx_++;
             is_angle_adjusting_ = false;

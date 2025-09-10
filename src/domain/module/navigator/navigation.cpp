@@ -64,7 +64,9 @@ void Navigation::update(double current_x, double current_y, double current_theta
         if (angle_to_obj <= fov_angle / 2.0)
         {
             if (dist < min_dist_in_fov)
+            {
                 min_dist_in_fov = dist;
+            }
         }
     }
 
@@ -133,12 +135,15 @@ void Navigation::update(double current_x, double current_y, double current_theta
     {
         updateArc(current_x, current_y, current_theta, out_linear, out_angular);
     }
+
+    std::cout << "navigation : " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
 }
 
 void Navigation::updateArc(double current_x, double current_y, double current_theta,
                            double& out_linear, double& out_angular)
 {
-    const double arc_follow_speed = 2.0;  // 원호 주행 선속도 예시
+    const double arc_follow_speed = 1.0;  // 원호 주행 선속도 예시
+
 
     // 원호 중심과 현재 위치 거리
     double dx = current_x - arc_center_x_;
@@ -185,4 +190,9 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
 
     out_linear = linear_speed;
     out_angular = angular_speed;
+
+    // std::cout << "cx: " << current_x << " acx: " << arc_center_x_
+    // << " cy: " << current_y << " acy: " << arc_center_y_
+    // <<  " dtc: " << distance_to_center << " re: " << radius_error
+    // << " ad: " << angle_diff << " ls: " << linear_speed << " as: " << angular_speed << std::endl;
 }

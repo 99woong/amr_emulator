@@ -18,21 +18,22 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     if(!hasTurnCenter)
     {
         navigation_->setTarget(target_x_, target_y_, target_theta_);
-        std::cout << "[VCU] Target position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
-        std::cout << " 22 "<<std::endl;
+        // std::cout << "[VCU] Target position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        // std::cout << " 22 "<<std::endl;
     }
     else
     {
-        std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
-        // double radius = std::hypot(target_x - center_x, start_y - center_y);
-        double radius = 25.99;
+        // std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        double radius = std::hypot(target_x - center_x, target_y - center_y);
+        
+        // double radius = 27.1;
         double start_angle = std::atan2(start_y - center_y, start_x - center_x);
         double end_angle = std::atan2(target_y - center_y, target_x - center_x);
         bool clockwise = false;
         
-        std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
+        // std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
 
         navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
     }
@@ -62,7 +63,6 @@ void Vcu::update(double dt, const std::vector<std::pair<double, double>>& other_
     localizer_->getPose(current_x, current_y, current_theta);
 
     double linear_vel_cmd = 0.0, angular_vel_cmd = 0.0;
-    // navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd);
     navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd, other_robot_positions);
     motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
     motor_->update(dt);

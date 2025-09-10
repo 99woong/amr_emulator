@@ -3,6 +3,7 @@
 #include "dd_acceleration_model.h" 
 #include "dd_acceleration_without_dynamics_model.h" 
 #include "motor_controller.h"
+#include "sd_motor_controller.h"
 #include "navigation.h"
 #include "vcu.h"
 #include "localizer.h"
@@ -81,7 +82,16 @@ bool AmrManager::isCustomTcpProtocolMessage(const std::string& msg)
 // 개별 AMR 생성
 std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config)
 {
-    auto motor = std::make_unique<MotorController>(config);
+    std::unique_ptr<IMotorController> motor;
+
+    if(config.vehicle_type == "steering_drive")
+    {
+        motor = std::make_unique<SDMotorController>(config);
+    }
+    else
+    {
+        motor = std::make_unique<MotorController>(config);
+    }
 
     // 다이나믹스 파라미터 체크
     bool use_dyn_model = (config.amr_params.mass_vehicle > 0 &&
@@ -93,19 +103,6 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
     {
         std::cout << " acc model : acc_model" << std::endl;
         
-        // auto acc_model = std::make_shared<DDAccelerationModel>(
-        //     config.amr_params.mass_vehicle,
-        //     config.amr_params.load_weight,
-        //     config.amr_params.max_torque,
-        //     config.amr_params.friction_coeff,
-        //     config.amr_params.max_speed,
-        //     config.amr_params.max_acceleration,
-        //     config.amr_params.max_deceleration,
-        //     config.amr_params.wheel_radius,
-        //     config.amr_params.max_angular_acceleration,
-        //     config.amr_params.max_angular_deceleration
-        // ); //dd type
-
         auto acc_model = std::make_shared<SDAccelerationModel>(
             config.amr_params.max_acceleration,
             config.amr_params.max_deceleration,
@@ -133,12 +130,12 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 
     try 
     {
-        std::cout <<"try dr model : " << config.dead_reckoning_model << std::endl;
-        dr_model = DeadReckoningModelFactory::create(config.dead_reckoning_model, config);
+        std::cout <<"try dr model : " << config.vehicle_type << std::endl;
+        dr_model = DeadReckoningModelFactory::create(config.vehicle_type, config);
     } 
     catch (const std::exception&) 
     {
-        std::cout <<"catch dr model : " << config.dead_reckoning_model << std::endl;
+        std::cout <<"catch dr model : " << config.vehicle_type << std::endl;
         dr_model = DeadReckoningModelFactory::create("differential_drive", config);
     }
 
