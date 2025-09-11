@@ -27,31 +27,9 @@ void SDMotorController::setMaxSpeed(double max_speed)
     max_speed_ = max_speed;
 }
 
-// void SDMotorController::setVelocity(double linear, double angular) 
-// {
-//     // cout << "[MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
-    
-//     linear_vel_cmd_ = linear;
-//     angular_vel_cmd_ = angular;
-
-//     // 최대 속도 제한
-//     linear_vel_cmd_ = std::clamp(linear_vel_cmd_, -max_speed_, max_speed_);
-
-//     if (std::abs(linear_vel_cmd_) > 1e-5)
-//     {
-//         constexpr double max_steering_angle_rad = 30.0 * M_PI / 180.0; // 30도 -> 라디안
-//         angular_vel_cmd_ = std::clamp(std::atan((angular*2) * wheel_base_ / linear_vel_cmd_), -max_angular_speed_, max_angular_speed_);
-//     }
-//     else
-//     {
-//         angular_vel_cmd_ = 0.0;
-//     }
-// }
-
 void SDMotorController::setVelocity(double linear, double angular) 
 {
-    cout << "[SD_MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
-    
+    // cout << "[SD_MotorController::setVelocity] linear : " << linear << " angular :" <<angular << endl; 
     if (std::abs(linear) > 1e-5) 
     {
         steering_angle_cmd_ = std::atan(wheel_base_ * angular / linear);
@@ -65,9 +43,7 @@ void SDMotorController::setVelocity(double linear, double angular)
     // 제한 걸기
     steering_angle_cmd_ = std::clamp(steering_angle_cmd_, -max_steering_angle_, max_steering_angle_);
     front_wheel_speed_cmd_ = std::clamp(front_wheel_speed_cmd_, -max_speed_, max_speed_);    
-    
-    cout << "[SD_MotorController::setVelocity] " << steering_angle_cmd_ << " " <<front_wheel_speed_cmd_ << endl; 
-
+    // cout << "[SD_MotorController::setVelocity] " << steering_angle_cmd_ << " " <<front_wheel_speed_cmd_ << endl; 
 }
     
 
@@ -85,7 +61,7 @@ void SDMotorController::update(double dt)
         // 가감속 모델이 설정되지 않았다면, 목표 속도로 즉시 변경 (디버그 또는 폴백)
         front_linear_vel_actual_ = front_wheel_speed_cmd_;
         steering_angular_vel_actual_ = steering_angle_cmd_;
-        std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
+        // std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
 
     // std::cout << "linear_vel_actual_ : " << linear_vel_actual_ << std::endl;
@@ -101,14 +77,14 @@ void SDMotorController::update(double dt)
     convertWheelSpeedToRPM(left_wheel_speed, left_rpm_);
     // convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
 
-    // 디버그 출력
-    std::cout << "MotorController Update: "
-              << "left_wheel_speed: " << left_wheel_speed << "m/s, "
-              << "right_rpm_: " << right_rpm_ << "m/s, "
-              << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
-              << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
-              << "Left RPM: " << left_rpm_ << ", "
-              << "Right RPM: " << right_rpm_ << std::endl;
+    // // 디버그 출력
+    // std::cout << "MotorController Update: "
+    //           << "left_wheel_speed: " << left_wheel_speed << "m/s, "
+    //           << "right_rpm_: " << right_rpm_ << "m/s, "
+    //           << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
+    //           << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
+    //           << "Left RPM: " << left_rpm_ << ", "
+    //           << "Right RPM: " << right_rpm_ << std::endl;
 }
 
 void SDMotorController::getRPM(double& front_wheel_rpm, double& front_steering_angle) const 
@@ -134,7 +110,7 @@ void SDMotorController::convertWheelSpeedToRPM(double wheel_speed, double& rpm) 
         std::cerr << "Error: Wheel radius is zero or negative when converting to RPM." << std::endl;
     }
 
-    std::cout << "[convertWheelSpeedToRPM] : " << wheel_speed << " " << rpm << std::endl;
+    // std::cout << "[convertWheelSpeedToRPM] : " << wheel_speed << " " << rpm << std::endl;
 
 }
 

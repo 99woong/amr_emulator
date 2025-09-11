@@ -13,7 +13,7 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     target_x_ = target_x;
     target_y_ = target_y;
     target_theta_ = target_theta;  // 목표 방향 추가 저장
-    std::cout << " 21 "<<std::endl;
+    // std::cout << " 21 "<<std::endl;
 
     if(!hasTurnCenter)
     {

@@ -262,7 +262,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             {
                 n.x = node["nodePosition"].value("x", 0.0);
                 n.y = node["nodePosition"].value("y", 0.0);
-                n.theta = node["nodePosition"].value("theta", 0.0);
+                // n.theta = node["nodePosition"].value("theta", 0.0);
             }
             node_map[n.nodeId] = n;
             

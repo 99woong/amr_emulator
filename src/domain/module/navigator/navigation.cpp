@@ -107,7 +107,8 @@ void Navigation::update(double current_x, double current_y, double current_theta
             out_linear = 0.0;
 
             // 각도 차이가 작으면 멈추고, 크면 회전하도록 각속도 설정
-            if (std::abs(angle_diff) < angle_reach_threshold)
+            // if (std::abs(angle_diff) < angle_reach_threshold)
+            if (1)
             {
                 out_angular = 0.0;  // 목표 각도 도달, 정지
             }
@@ -136,7 +137,7 @@ void Navigation::update(double current_x, double current_y, double current_theta
         updateArc(current_x, current_y, current_theta, out_linear, out_angular);
     }
 
-    std::cout << "navigation : " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
+    // std::cout << "navigation : " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
 }
 
 void Navigation::updateArc(double current_x, double current_y, double current_theta,

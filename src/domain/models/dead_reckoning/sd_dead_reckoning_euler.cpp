@@ -24,11 +24,11 @@ void SDdeadReckoningEuler::update(double rpm, double steering_angle, double dt)
 
     double v = (2.0 * M_PI * wheel_radius_ * rpm) / 60.0;
     
-    std::cout << "pure v : " << v << std::endl;
+    // std::cout << "pure v : " << v << std::endl;
 
     v += noise_dist_(generator_);
 
-    std::cout << "v : " << v << std::endl;
+    // std::cout << "v : " << v << std::endl;
 
     // double v = rpm + noise_dist_(generator_);
     double w = v / wheel_base_ * std::tan(steering_angle);
@@ -38,8 +38,8 @@ void SDdeadReckoningEuler::update(double rpm, double steering_angle, double dt)
     y_ += v * std::sin(theta_) * dt;
     theta_ += w * dt;
 
-    std::cout << "[1SDdeadReckoningEuler] : " << rpm << " " << steering_angle << 
-                " " << x_ << " " << y_ << " " << theta_ << std::endl;
+    // std::cout << "[1SDdeadReckoningEuler] : " << rpm << " " << steering_angle << 
+    //             " " << x_ << " " << y_ << " " << theta_ << std::endl;
 }
 
 

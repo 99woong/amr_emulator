@@ -165,6 +165,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     while (dtheta > PI) dtheta -= 2.0 * PI;
     while (dtheta < -PI) dtheta += 2.0 * PI;
 
+    //현재위치와 목표위치 차이 계산
     double dist = std::hypot(dx, dy);
 
     // maxSpeed를 MotorController에 설정
@@ -182,58 +183,22 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         reach_distance_radius = 0.1;
         angle_area_radius = 0.1;
     }
-    std::cout << "turn_center : " << cur_edge.has_turn_center <<  " " << reach_distance_radius <<" " <<  angle_area_radius << std::endl;
     
-    if (!is_angle_adjusting_)
+    if (dist < reach_distance_radius)
     {
-        // if (dist < reach_threshold)
-        if (dist < reach_distance_radius)
+        cur_edge_idx_++;
+        is_angle_adjusting_ = false;
+
+        if (cur_edge_idx_ >= edges_.size())
         {
-            is_angle_adjusting_ = true;
-
-            if(cur_edge.has_turn_center) 
-            {
-                vcu_->setTargetPosition(
-                    0.0,0.0,
-                    cur_x,
-                    cur_y,
-                    target_node ? target_node->theta : 0.0,
-                    cur_edge.turn_center_x,
-                    cur_edge.turn_center_y,
-                    true,
-                    wheel_base_
-                );
-            } 
-            else 
-            {
-                vcu_->setTargetPosition(
-                    0.0,0.0,
-                    cur_x,
-                    cur_y,
-                    target_node ? target_node->theta : 0.0,
-                    0.0, 0.0, false, wheel_base_
-                );
-            }    
+            // 오더 완료
+            nodes_.clear();
+            edges_.clear();
+            cur_edge_idx_ = 0;
+            return;
         }
-    }
-    else
-    {
-        if ((std::fabs(dtheta) < angle_threshold) || cur_edge.has_turn_center)
-        {
-            cur_edge_idx_++;
-            is_angle_adjusting_ = false;
+        const EdgeInfo& next_edge = edges_[cur_edge_idx_];
 
-            if (cur_edge_idx_ >= edges_.size())
-            {
-                // 오더 완료
-                nodes_.clear();
-                edges_.clear();
-                cur_edge_idx_ = 0;
-                return;
-            }
-            const EdgeInfo& next_edge = edges_[cur_edge_idx_];
-
-            setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
-        }
+        setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
     }
 }

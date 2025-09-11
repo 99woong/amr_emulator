@@ -52,7 +52,7 @@ void MotorController::update(double dt)
         // 가감속 모델이 설정되지 않았다면, 목표 속도로 즉시 변경 (디버그 또는 폴백)
         linear_vel_actual_ = linear_vel_cmd_;
         angular_vel_actual_ = angular_vel_cmd_;
-        std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
+        // std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
 
     // std::cout << "linear_vel_actual_ : " << linear_vel_actual_ << std::endl;
