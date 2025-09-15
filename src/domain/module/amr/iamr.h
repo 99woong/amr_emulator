@@ -28,6 +28,8 @@ public:
     virtual std::size_t getCurIdx() const = 0;
     // virtual void step(double dt) = 0;
     virtual void step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) = 0;
+    virtual void updateBattery(double dt, bool is_charging) = 0;
+    virtual double getBatteryPercent() const = 0; 
 
     virtual IVcu* getVcu() = 0;  // VCU 접근용 인터페이스
 };

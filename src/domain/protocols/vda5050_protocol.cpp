@@ -441,7 +441,7 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
 
     // 예시로 배터리 잔량 75% 표시
     state_json["battery"] = {
-        {"percentage", 75}
+        {"percentage", amr->getBatteryPercent()}
     };
 
     // 필요한 경우 추가 상태 정보 삽입 가능

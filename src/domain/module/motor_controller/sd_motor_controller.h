@@ -15,6 +15,8 @@ public:
     void update(double dt) override;
     void getRPM(double& left_rpm, double& right_rpm) const override;
     void setMaxSpeed(double max_speed)  override;
+    double getLinearVelocity() const override;
+    double getAngularVelocity() const override;
 
 private:
     std::shared_ptr<AccelerationModel> acceleration_model_;

@@ -8,6 +8,7 @@
 #include "vcu.h"
 #include "localizer.h"
 #include "dead_reckoning_model_factory.h"
+#include "battery_model_simple.h"
 #include <iostream>
 #include <unistd.h>
 
@@ -141,8 +142,9 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 
     auto localizer = std::make_unique<Localizer>(dr_model);
     auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(navigation), std::move(localizer));
+    auto battery_model = std::make_unique<BatteryModelSimple>(100.0, 0.01, 0.5, 95.0);
 
-    return std::make_unique<Amr>(id, std::move(vcu));
+    return std::make_unique<Amr>(id, std::move(vcu), std::move(battery_model));
 }
 
 // 프로토콜 생성 및 초기화

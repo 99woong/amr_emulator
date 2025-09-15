@@ -53,7 +53,10 @@ void AmrServerApp::run(const std::string& config_path)
                         other_positions.push_back(all_positions[i]);
                     }
                 }
-
+                
+                bool is_charging = false;  // 필요시 충전 상태 로직 구현
+                amr->updateBattery(dt_control, is_charging);
+                
                 // amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
                 amr->step(dt_control, other_positions);
                 ++idx;                
@@ -102,44 +105,5 @@ void AmrServerApp::run(const std::string& config_path)
     }
 }
 
-
-// void AmrServerApp::run(const std::string& config_path) 
-// {
-//     AmrConfig config = YamlConfig::load(config_path);
-//     AmrManager manager(config);
-//     manager.startAll();
-
-//     const double base_dt = 1.0; // 기존 1초 루프
-//     const double sim_dt = base_dt / config.speedup_ratio; // 배속에 따라 루프주기 단축
-    
-//     while (true) 
-//     {
-//         auto& amrs = manager.getAmrs();
-//         for (size_t i = 0; i < amrs.size(); ++i)
-//         {
-//            amrs[i]->step(sim_dt);
-           
-//            // 수정된 부분: protocols_ 멤버에 직접 접근하는 대신 public 메서드 사용
-//            if (i < manager.getProtocolCount()) // getProtocolCount() 사용
-//            {
-//                 IProtocol* currentProtocol = manager.getProtocol(i); // getProtocol() 사용
-//                 if (currentProtocol) 
-//                 { // nullptr 체크
-//                     // std::cout << "[state1] " << currentProtocol->makeStateMessage(amrs[i].get()) << std::endl;
-//                 } 
-//                 else 
-//                 {
-//                     // 이 경우는 getProtocolCount()가 i보다 크지만 getProtocol(i)이 nullptr을 반환하는 예외적인 상황
-//                     std::cerr << "[state] Error: Protocol at index " << i << " is null for AMR" << amrs[i]->getState() << std::endl;
-//                 }
-//            } 
-//            else 
-//            {
-//                 std::cout << "[state] AMR" << amrs[i]->getState() << " (No protocol attached or invalid index)" << std::endl;
-//            }            
-//         }
-//         std::this_thread::sleep_for(std::chrono::duration<double>(sim_dt));
-//     }    
-// }
 
 

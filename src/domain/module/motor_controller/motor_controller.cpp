@@ -18,7 +18,8 @@ MotorController::MotorController(const AmrConfig& config)
     cout << "wheel_radius_ : " << wheel_radius_ << endl;
 }
 
-void MotorController::setAccelerationModel(std::shared_ptr<AccelerationModel> model) {
+void MotorController::setAccelerationModel(std::shared_ptr<AccelerationModel> model) 
+{
     acceleration_model_ = model;
 }
 
@@ -37,6 +38,16 @@ void MotorController::setVelocity(double linear, double angular)
     // 최대 속도 제한
     linear_vel_cmd_ = std::clamp(linear_vel_cmd_, -max_speed_, max_speed_);
     angular_vel_cmd_ = std::clamp(angular_vel_cmd_, -max_angular_speed_, max_angular_speed_);
+}
+
+double MotorController::getLinearVelocity() const
+{
+    return linear_vel_actual_;
+}
+
+double MotorController::getAngularVelocity() const
+{
+    return angular_vel_actual_;
 }
     
 void MotorController::update(double dt) 

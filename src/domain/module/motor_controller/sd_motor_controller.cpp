@@ -45,6 +45,15 @@ void SDMotorController::setVelocity(double linear, double angular)
     front_wheel_speed_cmd_ = std::clamp(front_wheel_speed_cmd_, -max_speed_, max_speed_);    
     // cout << "[SD_MotorController::setVelocity] " << steering_angle_cmd_ << " " <<front_wheel_speed_cmd_ << endl; 
 }
+
+double SDMotorController::getLinearVelocity() const
+{
+    return linear_vel_actual_;
+}
+double SDMotorController::getAngularVelocity() const
+{
+    return steering_angular_vel_actual_;
+}
     
 
 void SDMotorController::update(double dt) 

@@ -4,9 +4,27 @@
 #include <iomanip>  
 #include <algorithm>  // std::find_if
 
-Amr::Amr(int id, std::unique_ptr<Vcu> vcu) : id_(id), vcu_(std::move(vcu)), cur_idx_(0) 
+Amr::Amr(int id, std::unique_ptr<Vcu> vcu, std::unique_ptr<IBatteryModel> battery_model) 
+: id_(id), vcu_(std::move(vcu)), battery_model_(std::move(battery_model)), cur_idx_(0) 
 { 
+}
 
+void Amr::updateBattery(double dt, bool is_charging)
+{
+    double linear_vel = 0.0, angular_vel = 0.0;
+    if (vcu_)
+    {
+        linear_vel = vcu_->getMotor().getLinearVelocity();     
+        angular_vel = vcu_->getMotor().getAngularVelocity();   
+    }
+    battery_model_->update(dt, linear_vel, angular_vel, is_charging);
+}
+
+double Amr::getBatteryPercent() const
+{
+    if (battery_model_)
+        return battery_model_->getCapacityPercent();
+    return 0.0;
 }
 
 void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base)
