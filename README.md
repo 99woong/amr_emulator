@@ -326,6 +326,36 @@ for a_i in axle_pos:
     v_right = omega * r_right
 
 ```
+##배터리 모델
+- simple battery model
+```
+Function UpdateBattery(dt, linear_velocity, angular_velocity, is_charging):
+    If is_charging is True:
+        If battery_charge < charge_stop_threshold:
+            Increase battery_charge by (max_charge_rate * dt)
+            Clamp battery_charge to a maximum of 100%  
+    Else (not charging):
+        If linear_velocity and angular_velocity are approximately zero:
+            Decrease battery_charge by (idle_discharge_rate * dt)  # idle discharge
+        Else:
+            discharge = CalculateDischarge(linear_velocity, angular_velocity, dt)
+            Decrease battery_charge by discharge
+        Clamp battery_charge to a minimum of 0%
+
+Function CalculateDischarge(linear_velocity, angular_velocity, dt) returns discharge_amount:
+    linear_speed = absolute value of linear_velocity
+    If linear_speed < low_speed_threshold:
+        linear_discharge_rate = low_rate
+    Else if linear_speed < medium_speed_threshold:
+        linear_discharge_rate = medium_rate
+    Else:
+        linear_discharge_rate = high_rate
+    angular_discharge_rate = angular_factor * absolute value of angular_velocity
+    total_discharge_rate = linear_discharge_rate + angular_discharge_rate
+    discharge_amount = total_discharge_rate * dt
+    Return discharge_amount
+```
+
 
 # 설치
 # 사용법
