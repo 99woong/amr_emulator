@@ -326,7 +326,7 @@ for a_i in axle_pos:
     v_right = omega * r_right
 
 ```
-##배터리 모델
+## 배터리 모델
 - simple battery model
 ```
 Function UpdateBattery(dt, linear_velocity, angular_velocity, is_charging):
