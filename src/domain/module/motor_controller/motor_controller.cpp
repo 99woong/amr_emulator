@@ -42,11 +42,13 @@ void MotorController::setVelocity(double linear, double angular)
 
 double MotorController::getLinearVelocity() const
 {
+    // std::cout << " MotorController::getLinearVelocity(): " << linear_vel_actual_<<std::endl;
     return linear_vel_actual_;
 }
 
 double MotorController::getAngularVelocity() const
 {
+    // std::cout << " MotorController::getAngularVelocity(): " << angular_vel_actual_<<std::endl;
     return angular_vel_actual_;
 }
     
@@ -66,7 +68,9 @@ void MotorController::update(double dt)
         // std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
 
+    // std::cout << "MotorController::update(double dt)" << std::endl;
     // std::cout << "linear_vel_actual_ : " << linear_vel_actual_ << std::endl;
+    // std::cout << "angular_vel_actual_ : " << angular_vel_actual_ << std::endl;
 
 
     // 실제 휠 속도 계산 (차동 구동 로봇 기준)

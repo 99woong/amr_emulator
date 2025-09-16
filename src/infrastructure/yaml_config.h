@@ -18,6 +18,16 @@ struct AmrParams
     double max_rpm_deviation;  //rpm noise level(standard deviation)
 };
 
+struct BatteryParams 
+{
+    double idle_discharge_per_sec;
+    double max_charge_per_sec;
+    double charge_stop_threshold;
+    double linear_slope;
+    double angular_slope;
+    double acceleration_factor;
+};
+
 struct AmrConfig 
 {
     int amr_count;
@@ -30,6 +40,7 @@ struct AmrConfig
     double state_publish_period = 1.0;
     double control_period = 0.01;
     AmrParams amr_params;
+    BatteryParams battery_params;
 };
 
 class YamlConfig 

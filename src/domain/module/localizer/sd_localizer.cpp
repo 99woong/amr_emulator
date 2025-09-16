@@ -1,4 +1,5 @@
 #include "sd_localizer.h"
+#include <iostream>
 
 SDLocalizer::SDLocalizer(std::shared_ptr<ideadReckoningModel> dr_model)
     : dr_model_(dr_model)
@@ -15,6 +16,8 @@ void SDLocalizer::setInitialPose(double x, double y, double theta)
 
 void SDLocalizer::update(double left_rpm, double right_rpm, double dt)
 {
+    // std::cout << "SDLocalizer::update : " << left_rpm << " "<< right_rpm << std::endl;
+
     if (dr_model_)
     {
         dr_model_->update(left_rpm, right_rpm, dt);

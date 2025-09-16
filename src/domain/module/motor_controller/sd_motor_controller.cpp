@@ -48,22 +48,27 @@ void SDMotorController::setVelocity(double linear, double angular)
 
 double SDMotorController::getLinearVelocity() const
 {
-    return linear_vel_actual_;
+    // std::cout << " SDMotorController::getLinearVelocity(): " << front_linear_vel_actual_<<std::endl;
+    return front_linear_vel_actual_;
 }
 double SDMotorController::getAngularVelocity() const
 {
+    // std::cout << " SDMotorController::getAngularVelocity(): " << steering_angular_vel_actual_<<std::endl;
     return steering_angular_vel_actual_;
 }
     
 
 void SDMotorController::update(double dt) 
 {
-    // if (acceleration_model_) 
-    if (0) 
+    if (acceleration_model_) 
+    // if (0) 
     {
         // 가감속 모델을 사용하여 실제 속도 업데이트
         front_linear_vel_actual_ = acceleration_model_->applyAcceleration(front_linear_vel_actual_, front_wheel_speed_cmd_, dt);
         steering_angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(steering_angular_vel_actual_, steering_angle_cmd_, dt);
+
+        // std::cout << "acceleration_model_speed: " << front_wheel_speed_cmd_ << " " << front_linear_vel_actual_ << std::endl;
+        // std::cout << "acceleration_model_angle: " << steering_angle_cmd_ << " " << steering_angular_vel_actual_ << std::endl;
     } 
     else 
     {
@@ -72,9 +77,6 @@ void SDMotorController::update(double dt)
         steering_angular_vel_actual_ = steering_angle_cmd_;
         // std::cerr << "Warning: No AccelerationModel set for MotorController. Speeds updated instantly." << std::endl;
     }
-
-    // std::cout << "linear_vel_actual_ : " << linear_vel_actual_ << std::endl;
-
 
     // 실제 휠 속도 계산 (차동 구동 로봇 기준)
     double left_wheel_speed, right_wheel_speed;
@@ -86,7 +88,7 @@ void SDMotorController::update(double dt)
     convertWheelSpeedToRPM(left_wheel_speed, left_rpm_);
     // convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
 
-    // // 디버그 출력
+    // 디버그 출력
     // std::cout << "MotorController Update: "
     //           << "left_wheel_speed: " << left_wheel_speed << "m/s, "
     //           << "right_rpm_: " << right_rpm_ << "m/s, "

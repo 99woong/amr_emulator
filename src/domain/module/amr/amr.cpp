@@ -189,12 +189,12 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     // maxSpeed를 MotorController에 설정
     vcu_->getMotor().setMaxSpeed(cur_edge.maxSpeed);
     
-    std::cout << "dist : " << dist << " dtheta : " << dtheta << " tx : " << target_node->x << " cx : " << cur_x << " ty : " << target_node->y << " cy : " << cur_y << " tt : " << target_node->theta << " ct : " << cur_theta << std::endl;
+    // std::cout << "dist : " << dist << " dtheta : " << dtheta << " tx : " << target_node->x << " cx : " << cur_x << " ty : " << target_node->y << " cy : " << cur_y << " tt : " << target_node->theta << " ct : " << cur_theta << std::endl;
 
     if(cur_edge.has_turn_center)
     {
-        reach_distance_radius = 1.0;
-        angle_area_radius = 1.0;
+        reach_distance_radius = 2.0;
+        angle_area_radius = 2.0;
     }
     else
     {

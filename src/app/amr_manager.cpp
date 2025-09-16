@@ -7,6 +7,7 @@
 #include "navigation.h"
 #include "vcu.h"
 #include "localizer.h"
+#include "sd_localizer.h"
 #include "dead_reckoning_model_factory.h"
 #include "battery_model_simple.h"
 #include <iostream>
@@ -140,9 +141,19 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
         dr_model = DeadReckoningModelFactory::create("differential_drive", config);
     }
 
-    auto localizer = std::make_unique<Localizer>(dr_model);
+    auto localizer = std::make_unique<SDLocalizer>(dr_model);
     auto vcu = std::make_unique<Vcu>(std::move(motor), std::move(navigation), std::move(localizer));
-    auto battery_model = std::make_unique<BatteryModelSimple>(100.0, 0.01, 0.5, 95.0);
+    
+    // auto battery_model = std::make_unique<BatteryModelSimple>(100.0, 0.01, 0.5, 95.0);
+    auto battery_model = std::make_unique<BatteryModelSimple>(
+        100.0,
+        config.battery_params.idle_discharge_per_sec,
+        config.battery_params.max_charge_per_sec,
+        config.battery_params.charge_stop_threshold,
+        config.battery_params.linear_slope,
+        config.battery_params.angular_slope,
+        config.battery_params.acceleration_factor
+    );
 
     return std::make_unique<Amr>(id, std::move(vcu), std::move(battery_model));
 }

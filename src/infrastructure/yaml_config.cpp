@@ -46,8 +46,14 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.visualization_publish_period = config["visualization_publish_period"].as<double>();
     cfg.state_publish_period = config["state_publish_period"].as<double>();
     cfg.control_period = config["control_period"].as<double>();
-    // cfg.dead_reckoning_model = config["dead_reckoning_model"].as<std::string>();
     cfg.vehicle_type = config["vehicle_type"].as<std::string>();
+
+    cfg.battery_params.idle_discharge_per_sec = config["battery_params"]["idle_discharge_per_sec"].as<double>();
+    cfg.battery_params.acceleration_factor = config["battery_params"]["acceleration_factor"].as<double>();
+    cfg.battery_params.angular_slope = config["battery_params"]["angular_slope"].as<double>();
+    cfg.battery_params.charge_stop_threshold = config["battery_params"]["charge_stop_threshold"].as<double>();
+    cfg.battery_params.linear_slope = config["battery_params"]["linear_slope"].as<double>();
+    cfg.battery_params.max_charge_per_sec = config["battery_params"]["max_charge_per_sec"].as<double>();
 
     return cfg;
 }

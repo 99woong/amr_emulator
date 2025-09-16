@@ -18,6 +18,9 @@ void SDdeadReckoningEuler::setInitialPose(double x, double y, double theta)
 
 void SDdeadReckoningEuler::update(double rpm, double steering_angle, double dt) 
 {
+
+    // std::cout << "SDdeadReckoningEuler::update : " << rpm << " " << steering_angle << std::endl;
+
     // double noisy_rpm = rpm + noise_dist_(generator_);
 
     // std::cout <<"dr lrpm : " << left_rpm << " rrpm : " << right_rpm <<std::endl;

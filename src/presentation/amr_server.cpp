@@ -53,7 +53,8 @@ void AmrServerApp::run(const std::string& config_path)
                         other_positions.push_back(all_positions[i]);
                     }
                 }
-                
+                // std::cout << "amr index: " << idx << std::endl;
+
                 bool is_charging = false;  // 필요시 충전 상태 로직 구현
                 amr->updateBattery(dt_control, is_charging);
                 

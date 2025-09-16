@@ -35,21 +35,21 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
         
         // std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
 
-        navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
+        navigation_->setArcTarget(target_x_, target_y_, target_theta_, center_x, center_y, radius, start_angle, end_angle, clockwise);
     }
 }
 
-void Vcu::setTargetArc(double start_x, double start_y, double center_x,
-    double center_y, double end_x, double end_y, double wheeBase)
-{
+// void Vcu::setTargetArc(double start_x, double start_y, double center_x,
+//     double center_y, double end_x, double end_y, double wheeBase)
+// {
     
-    double radius = std::hypot(start_x - center_x, start_y - center_y);
-    double start_angle = std::atan2(start_y - center_y, start_x - center_x);
-    double end_angle = std::atan2(end_y - center_y, end_x - center_x);
-    bool clockwise = false; 
+//     double radius = std::hypot(start_x - center_x, start_y - center_y);
+//     double start_angle = std::atan2(start_y - center_y, start_x - center_x);
+//     double end_angle = std::atan2(end_y - center_y, end_x - center_x);
+//     bool clockwise = false; 
 
-    navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
-}
+//     navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
+// }
 
 // void Vcu::update(double dt) 
 void Vcu::update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)

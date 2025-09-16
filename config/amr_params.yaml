@@ -1,9 +1,8 @@
-amr_count: 5
+amr_count: 1
 base_port: 8080
-speedup_ratio: 2
+speedup_ratio: 4
 protocol_type: "vda5050"
-vehicle_type : "differential_drive"
-dead_reckoning_model : "differential_drive"
+vehicle_type : "steering_drive"   #"differential_drive"
 visualization_publish_period : 0.05
 state_publish_period : 5.0
 control_period : 0.01
@@ -14,11 +13,11 @@ amr_params:
   friction_coeff : 0.05 
   max_speed : 5.0
   max_angular_speed: 1.0
-  max_acceleration : 2.0
-  max_deceleration : 2.5
+  max_acceleration : 3.0
+  max_deceleration : 3.5
   max_angular_acceleration: 0.5
   max_angular_deceleration: 0.5
-  max_rpm_deviation : 1.0
+  max_rpm_deviation : 0.0
   wheel_base: 0.52
   wheel_radius: 0.078
   turning_radius_min: 0.8
@@ -37,5 +36,16 @@ amr_params:
   payload_max: 100
   sensor_used:
     lidar: true
+battery_params:
+  idle_discharge_per_sec: 0.001 # 유휴기간 0.001%, 정지상태 28시간 후 0% 방전
+  max_charge_per_sec: 0.01  # 약 100% 충전소요시간 : 2시간 45분
+  charge_stop_threshold: 90.0 # 충전제한 : 90%
+  linear_slope: 0.004
+  angular_slope: 0.002
+  acceleration_factor: 0.001
+
+
+
+
 
 

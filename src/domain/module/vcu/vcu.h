@@ -12,7 +12,7 @@ public:
     Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> nav, std::unique_ptr<ILocalizer> localizer);
     
     void setTargetPosition(double start_x, double start_y, double target_x, double target_y, double target_theta, double center_x, double center_y, bool hasTurnCenter, double wheel_base) override;
-    void setTargetArc(double start_x, double start_y, double center_x, double center_y, double end_x, double end_y, double wheeBase) override;
+    // void setTargetArc(double start_x, double start_y, double center_x, double center_y, double end_x, double end_y, double wheeBase) override;
     // void update(double dt) override;
     void update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions) override;
     void updateNodes(const std::vector<NodeInfo>& nodes) override;

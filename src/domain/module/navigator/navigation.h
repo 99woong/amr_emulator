@@ -5,7 +5,7 @@ class Navigation : public INavigation
 public:
     Navigation();
     void setTarget(double x, double y, double theta) override;
-    void setArcTarget(double center_x, double center_y, double radius, double start_angle, double end_angle, bool clockwise);    
+    void setArcTarget(double x, double y, double theta, double center_x, double center_y, double radius, double start_angle, double end_angle, bool clockwise) override;
     // void update(double current_x, double current_y, double current_theta, double& out_linear, double& out_angular) override;
     void update(double current_x, double current_y, double current_theta,
                             double& out_linear, double& out_angular,
