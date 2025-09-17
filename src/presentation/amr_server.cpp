@@ -16,15 +16,26 @@ void AmrServerApp::run(const std::string& config_path)
     const double dt_control = config.control_period;       // 내부 제어 주기(10ms)
     const double dt_state = config.state_publish_period;           // state topic (1초)
     const double dt_vis = config.visualization_publish_period;            // visualization topic (50ms)
-    const double dt_master = 0.001;        // 최소 단위 루프(가급적 작게)
+    const double dt_master = 0.01;        // 최소 단위 루프(가급적 작게)
 
     double sim_time = 0.0;
     double next_motor_update = 0.0;
     double next_state_pub = 0.0;
     double next_vis_pub = 0.0;
 
+    std::cout << "speedup_ratio : " << speedup << std::endl;
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto last_time = start_time;
+
     while (true)
     {
+        // auto current_time = std::chrono::high_resolution_clock::now();
+        // auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(
+        //     current_time - last_time).count();
+
+        // sim_time += elapsed * speedup;
+
         sim_time += dt_master * speedup;
         auto& amrs = manager.getAmrs();
        
@@ -101,6 +112,9 @@ void AmrServerApp::run(const std::string& config_path)
             next_vis_pub += dt_vis;
         }
         
+        // last_time = current_time;
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
         std::this_thread::sleep_for(std::chrono::duration<double>(dt_master / speedup));
         // 실제 sleep 시간은 speedup 반영 (dt_master만큼 시뮬 타임 진행)
     }

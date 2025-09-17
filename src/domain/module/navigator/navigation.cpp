@@ -99,7 +99,7 @@ void Navigation::update(double current_x, double current_y, double current_theta
         double dy = target_y_ - current_y;
         double distance = std::sqrt(dx * dx + dy * dy);
         
-        std::cout << "go straight " << std::endl;
+        // std::cout << "go straight " << std::endl;
         if (distance < position_reach_threshold)
         {
             // 목표 방향과 현재 방향 차이 계산 및 보정
@@ -138,11 +138,11 @@ void Navigation::update(double current_x, double current_y, double current_theta
     }
     else
     {
-        std::cout << "go arc : " << std::endl;
+        // std::cout << "go arc : " << std::endl;
         updateArc(current_x, current_y, current_theta, out_linear, out_angular);
     }
 
-    std::cout << "navigation : " << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
+    // std::cout << "navigation : " << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
 }
 
 void Navigation::updateArc(double current_x, double current_y, double current_theta,
@@ -177,14 +177,14 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
     }
 
     const double angle_threshold = 0.05; // 3도 정도 도달 허용
-    std::cout << "angle_diff : " << std::abs(angle_diff) << std::endl;
+    // std::cout << "angle_diff : " << std::abs(angle_diff) << std::endl;
     if (std::abs(angle_diff) < angle_threshold) 
     {
         // 원호 끝점 도달 시 원호 모드 종료 (직선 모드 전환 or 정지)
         use_arc_ = false;
         out_linear = 0.0;
         out_angular = 0.0;
-        std::cout << "out_linear : " << out_linear << " " << out_angular <<  std::endl;
+        // std::cout << "out_linear : " << out_linear << " " << out_angular <<  std::endl;
         return;
     }
 

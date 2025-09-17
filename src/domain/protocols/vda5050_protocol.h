@@ -40,7 +40,7 @@ public:
 
     void setAmr(IAmr* amr);
     void setAgvId(const std::string& agv_id);
-    void useDefaultConfig();
+    void useDefaultConfig(const std::string& server_address);
 
     void start() override;
     void stop();

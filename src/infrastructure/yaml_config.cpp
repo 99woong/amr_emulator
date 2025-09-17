@@ -54,6 +54,8 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.battery_params.charge_stop_threshold = config["battery_params"]["charge_stop_threshold"].as<double>();
     cfg.battery_params.linear_slope = config["battery_params"]["linear_slope"].as<double>();
     cfg.battery_params.max_charge_per_sec = config["battery_params"]["max_charge_per_sec"].as<double>();
+    
+    cfg.mqtt.server_address = config["mqtt"]["server_address"].as<std::string>();
 
     return cfg;
 }

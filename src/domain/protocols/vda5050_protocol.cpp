@@ -44,9 +44,11 @@ void Vda5050Protocol::setAgvId(const std::string& agv_id)
 
 }
 
-void Vda5050Protocol::useDefaultConfig() 
+void Vda5050Protocol::useDefaultConfig(const std::string& server_address) 
 {
-    mqtt_server_uri_ = "tcp://localhost:1883";
+    // mqtt_server_uri_ = "tcp://localhost:1883";
+    std::cout << "mqtt_server_address: " << server_address << std::endl;
+    mqtt_server_uri_ = server_address;
     conn_opts_.set_clean_session(true);
     mqtt_client_ = std::make_unique<mqtt::async_client>(mqtt_server_uri_, agv_id_ + "_client");
     mqtt_callback_ = std::make_shared<Vda5050MqttCallback>(this);

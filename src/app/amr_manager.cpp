@@ -39,7 +39,7 @@ AmrManager::AmrManager(const AmrConfig& config)
 
         std::cout << "port : " << port << std::endl;
 
-        auto protocol = createProtocol(config.protocol_type, agv_id, amrs_.back().get());
+        auto protocol = createProtocol(config.protocol_type, config.mqtt.server_address , agv_id, amrs_.back().get());
         if (protocol)
             protocols_.push_back(std::move(protocol));
 
@@ -159,13 +159,13 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 }
 
 // 프로토콜 생성 및 초기화
-std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& agv_id, Amr* amr)
+std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr)
 {
     if (protocol_type == "vda5050")
     {
         auto vdaProto = std::make_unique<Vda5050Protocol>();
         vdaProto->setAgvId(agv_id);
-        vdaProto->useDefaultConfig();
+        vdaProto->useDefaultConfig(server_address);
         vdaProto->setAmr(amr);
         std::cout << "[AmrManager] AMR " << agv_id << " configured for VDA 5050 protocol." << std::endl;
         return vdaProto;

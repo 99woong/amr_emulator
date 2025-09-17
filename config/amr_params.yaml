@@ -1,6 +1,6 @@
 amr_count: 1
 base_port: 8080
-speedup_ratio: 4
+speedup_ratio: 10
 protocol_type: "vda5050"
 vehicle_type : "steering_drive"   #"differential_drive"
 visualization_publish_period : 0.05
@@ -43,6 +43,8 @@ battery_params:
   linear_slope: 0.004
   angular_slope: 0.002
   acceleration_factor: 0.001
+mqtt:
+  server_address: "tcp://localhost:1883"
 
 
 
