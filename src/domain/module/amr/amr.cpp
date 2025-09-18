@@ -44,26 +44,30 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
         start_node = &(*sit);
 
 
-    if(edge.has_turn_center) {
+    if(edge.has_turn_center) 
+    {
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
             target_node ? target_node->x : 0.0,
             target_node ? target_node->y : 0.0,
-            target_node ? target_node->theta : 0.0,
             edge.turn_center_x,
             edge.turn_center_y,
             true,
             wheel_base
         );
-    } else {
+    } 
+    else 
+    {
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
             target_node ? target_node->x : 0.0,
             target_node ? target_node->y : 0.0,
-            target_node ? target_node->theta : 0.0,
-            0.0, 0.0, false, wheel_base
+            0.0, 
+            0.0, 
+            false, 
+            wheel_base
         );
     }
 }
@@ -102,10 +106,13 @@ NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, do
 
     NodeInfo pt;
 
-    if(d2 < 0) {
+    if(d2 < 0) 
+    {
         // 접점 없음(fallback)
         pt.x = x0; pt.y = y0;
-    } else {
+    } 
+    else 
+    {
         double mult = std::sqrt(d2 / denom);
 
         // 직선의 방향벡터(B, -A)
@@ -125,7 +132,6 @@ NodeInfo Amr::calculateTangentPoint(const Line& line, const NodeInfo& center, do
         double dist2 = hypot(p2.x - ref.x, p2.y - ref.y);
         pt = (preferCloser == (dist1 < dist2)) ? p1 : p2;
     }
-    pt.theta = 0.0;
     return pt;
 }
 
@@ -149,9 +155,6 @@ IVcu* Amr::getVcu()
     return vcu_.get();
 }
 
-
-
-// void Amr::step(double dt)
 void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     constexpr double reach_threshold = 0.01;
@@ -179,9 +182,9 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
 
     double dx = target_node->x - cur_x;
     double dy = target_node->y - cur_y;
-    double dtheta = target_node->theta - cur_theta;
-    while (dtheta > PI) dtheta -= 2.0 * PI;
-    while (dtheta < -PI) dtheta += 2.0 * PI;
+    // double dtheta = target_node->theta - cur_theta;
+    // while (dtheta > PI) dtheta -= 2.0 * PI;
+    // while (dtheta < -PI) dtheta += 2.0 * PI;
 
     //현재위치와 목표위치 차이 계산
     double dist = std::hypot(dx, dy);

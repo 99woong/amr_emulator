@@ -9,7 +9,7 @@ SDMotorController::SDMotorController(const AmrConfig& config)
     : linear_vel_cmd_(0), angular_vel_cmd_(0),
       linear_vel_actual_(0), angular_vel_actual_(0),
       left_rpm_(0.0), right_rpm_(0.0), steering_angle_cmd_(0.0), front_wheel_speed_cmd_(0.0), max_steering_angle_(30.0),
-      wheel_base_(config.amr_params.wheel_base), max_speed_(config.amr_params.max_speed), max_angular_speed_(config.amr_params.max_angular_speed),
+      wheel_base_(config.amr_params.wheel_base), max_speed_(config.amr_params.max_speed), max_angular_speed_(config.amr_params.angularSpeedMax),
       wheel_radius_(config.amr_params.wheel_radius)
 {
     cout << "wheel_base_ : " << wheel_base_ << endl;
@@ -61,14 +61,10 @@ double SDMotorController::getAngularVelocity() const
 void SDMotorController::update(double dt) 
 {
     if (acceleration_model_) 
-    // if (0) 
     {
         // 가감속 모델을 사용하여 실제 속도 업데이트
         front_linear_vel_actual_ = acceleration_model_->applyAcceleration(front_linear_vel_actual_, front_wheel_speed_cmd_, dt);
         steering_angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(steering_angular_vel_actual_, steering_angle_cmd_, dt);
-
-        // std::cout << "acceleration_model_speed: " << front_wheel_speed_cmd_ << " " << front_linear_vel_actual_ << std::endl;
-        // std::cout << "acceleration_model_angle: " << steering_angle_cmd_ << " " << steering_angular_vel_actual_ << std::endl;
     } 
     else 
     {
@@ -87,15 +83,6 @@ void SDMotorController::update(double dt)
     // 휠 속도를 RPM으로 변환
     convertWheelSpeedToRPM(left_wheel_speed, left_rpm_);
     // convertWheelSpeedToRPM(right_wheel_speed, right_rpm_);
-
-    // 디버그 출력
-    // std::cout << "MotorController Update: "
-    //           << "left_wheel_speed: " << left_wheel_speed << "m/s, "
-    //           << "right_rpm_: " << right_rpm_ << "m/s, "
-    //           << "Cmd Ang: " << angular_vel_cmd_ << "rad/s, "
-    //           << "Actual Ang: " << angular_vel_actual_ << "rad/s, "
-    //           << "Left RPM: " << left_rpm_ << ", "
-    //           << "Right RPM: " << right_rpm_ << std::endl;
 }
 
 void SDMotorController::getRPM(double& front_wheel_rpm, double& front_steering_angle) const 

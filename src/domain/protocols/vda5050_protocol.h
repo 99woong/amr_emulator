@@ -33,9 +33,25 @@
 
 // Forward declaration for MyNavigationHandler or define it directly in .cpp
 
+struct ActionInfo {
+    std::string actionId;
+    std::string actionType;
+    std::string description;
+    std::string status;
+    std::string resultDescription;
+    nlohmann::json actionParameters;
+};
+
+struct ErrorInfo {
+    std::string errorType;
+    std::string errorLevel;
+    std::string description;
+    std::string hint;
+};    
+
 class Vda5050Protocol : public IProtocol {
 public:
-    Vda5050Protocol();
+    Vda5050Protocol(const AmrConfig& config);
     ~Vda5050Protocol();
 
     void setAmr(IAmr* amr);
@@ -87,6 +103,7 @@ private:
     std::string state_topic_;
     std::string visualization_topic_;
     std::string instant_actions_topic;
+    std::string connection_topic_;
 
     std::thread publish_thread_;
     std::atomic<bool> running_;
@@ -96,5 +113,25 @@ private:
     void processVda5050Order(const nlohmann::json& order_json); // Kept for manual parsing if needed
     void handleInstantAction(const nlohmann::json& instant_action_json);
     std::string makeFactsheetMessage();
+    std::string makeVisualizationMessage(IAmr* amr);
+    std::string detectConnection();
+    std::string makeConnectMessage();
     std::string getCurrentTimestampISO8601();
+
+
+    uint32_t state_header_id_ = 0;    
+    
+    // 헬퍼 메서드들
+    std::string getCurrentNodeId(IAmr* amr);
+    std::string getCurrentEdgeId(IAmr* amr);
+    std::vector<NodeInfo> getUpcomingNodes(IAmr* amr);
+    std::vector<EdgeInfo> getUpcomingEdges(IAmr* amr);
+    std::vector<ActionInfo> getCurrentActions(IAmr* amr);
+    std::vector<ErrorInfo> getSystemErrors(IAmr* amr);
+    bool getEmergencyStopStatus(IAmr* amr);
+    bool getFieldViolationStatus(IAmr* amr);
+    bool isCharging(IAmr* amr);
+    std::string getLastNodeId(IAmr* amr);
+    int getLastNodeSequenceId(IAmr* amr);
+    nlohmann::json getCurrentNodePosition(IAmr* amr);    
 };

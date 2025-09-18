@@ -4,12 +4,15 @@
 struct NodeInfo 
 {
     std::string nodeId;
+    std::string description;
     int sequenceId;
     double x;
     double y;
-    double theta;
 
-    NodeInfo() : sequenceId(0), x(0), y(0), theta(0) {}
+    // double theta;
+
+    NodeInfo() : sequenceId(0), x(0), y(0){}
+    // NodeInfo() : sequenceId(0), x(0), y(0), theta(0) {}
 };
 
 struct PositionInfo 
@@ -26,6 +29,7 @@ struct EdgeInfo
     int sequenceId;
     std::string startNodeId;
     std::string endNodeId;
+    std::string description;
     double maxSpeed;
     // std::string turnCenter;
     bool has_turn_center = false;

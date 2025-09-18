@@ -41,7 +41,7 @@ private:
     std::unique_ptr<Amr> createSingleAmr(int id, const AmrConfig& config);
 
     // 프로토콜 생성 및 초기설정 함수
-    std::unique_ptr<IProtocol> createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr);
+    std::unique_ptr<IProtocol> createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr, const AmrConfig& config);
 
     // TCP 서버 생성 및 핸들러 연결 함수
     void setupTcpServer(int port, int amr_idx);        

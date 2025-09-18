@@ -17,29 +17,23 @@
 AmrManager::AmrManager(const AmrConfig& config)
     : config_(config)
 {
-   for (int i = 0; i < config.amr_count; ++i)
+   for (int i = 0; i < config_.amr_count; ++i)
    {
-        int port = config.base_port + i;
+        int port = config_.base_port + i;
         std::string agv_id = "amr_" + std::to_string(i);
 
-        auto amr = createSingleAmr(i, config);
+        auto amr = createSingleAmr(i, config_);
 
         // 초기 위치 설정 (예: YAML config 선언 값 또는 하드코딩)
-        double init_x = 0.0, init_y = 0.0, init_theta = 0.0;
+        // double init_x = 0.0, init_y = 0.0, init_theta = 0.0;
     
-        // if (!config.initial_poses.empty() && i < config.initial_poses.size()) 
-        
-        //     init_x = config.initial_poses[i].x;
-        //     init_y = config.initial_poses[i].y;
-        //     init_theta = config.initial_poses[i].theta;
-        // }
-        amr->getVcu()->setInitialPose(init_x, init_y, init_theta);
+        amr->getVcu()->setInitialPose(config_.initial_pose.x, config_.initial_pose.y, config_.initial_pose.heading);
 
         amrs_.push_back(std::move(amr));
 
         std::cout << "port : " << port << std::endl;
 
-        auto protocol = createProtocol(config.protocol_type, config.mqtt.server_address , agv_id, amrs_.back().get());
+        auto protocol = createProtocol(config_.protocol_type, config_.mqtt.server_address , agv_id, amrs_.back().get(), config_);
         if (protocol)
             protocols_.push_back(std::move(protocol));
 
@@ -98,16 +92,16 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
     // 다이나믹스 파라미터 체크
     bool use_dyn_model = (config.amr_params.mass_vehicle > 0 &&
                           config.amr_params.max_torque > 0 &&
-                          config.amr_params.max_acceleration > 0 &&
-                          config.amr_params.max_deceleration > 0);
+                          config.amr_params.accelerationMax > 0 &&
+                          config.amr_params.decelerationMax > 0);
 
     if (use_dyn_model) 
     {
         std::cout << " acc model : acc_model" << std::endl;
         
         auto acc_model = std::make_shared<SDAccelerationModel>(
-            config.amr_params.max_acceleration,
-            config.amr_params.max_deceleration,
+            config.amr_params.accelerationMax,
+            config.amr_params.decelerationMax,
             config.amr_params.max_angular_acceleration,
             config.amr_params.max_angular_deceleration
         );
@@ -118,8 +112,8 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
         std::cout << " acc model : acc_model_simple" << std::endl;
         // 다이나믹스 제외한 단순 모델 사용
         auto acc_model_simple = std::make_shared<DDAccelerationWithoutDynamicsModel>(
-            config.amr_params.max_acceleration,
-            config.amr_params.max_deceleration,
+            config.amr_params.accelerationMax,
+            config.amr_params.decelerationMax,
             config.amr_params.max_angular_acceleration,
             config.amr_params.max_angular_deceleration
         );
@@ -159,11 +153,11 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
 }
 
 // 프로토콜 생성 및 초기화
-std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr)
+std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr, const AmrConfig& config)
 {
     if (protocol_type == "vda5050")
     {
-        auto vdaProto = std::make_unique<Vda5050Protocol>();
+        auto vdaProto = std::make_unique<Vda5050Protocol>(config);
         vdaProto->setAgvId(agv_id);
         vdaProto->useDefaultConfig(server_address);
         vdaProto->setAmr(amr);

@@ -8,19 +8,14 @@ Vcu::Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> n
 
 }
 
-void Vcu::setTargetPosition(double start_x, double start_y, double target_x, double target_y, double target_theta, double center_x, double center_y, bool hasTurnCenter, double wheel_base)
+void Vcu::setTargetPosition(double start_x, double start_y, double target_x, double target_y, double center_x, double center_y, bool hasTurnCenter, double wheel_base)
 {
     target_x_ = target_x;
     target_y_ = target_y;
-    target_theta_ = target_theta;  // 목표 방향 추가 저장
-    // std::cout << " 21 "<<std::endl;
 
     if(!hasTurnCenter)
     {
-        navigation_->setTarget(target_x_, target_y_, target_theta_);
-        // std::cout << "[VCU] Target position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
-        // std::cout << " 22 "<<std::endl;
+        navigation_->setTarget(target_x_, target_y_);
     }
     else
     {
@@ -35,7 +30,7 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
         
         // std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
 
-        navigation_->setArcTarget(target_x_, target_y_, target_theta_, center_x, center_y, radius, start_angle, end_angle, clockwise);
+        navigation_->setArcTarget(target_x_, target_y_, center_x, center_y, radius, start_angle, end_angle, clockwise);
     }
 }
 
@@ -106,11 +101,6 @@ ILocalizer& Vcu::getLocalizer()
 void Vcu::updateNodes(const std::vector<NodeInfo>& nodes) 
 {
     std::cout << "[VCU] updateNodes called with " << nodes.size() << " nodes." << std::endl;
-
-    for (const auto& node : nodes) 
-    {
-        std::cout << " - NodeId: " << node.nodeId << ", Pos: (" << node.x << ", " << node.y << ", " << node.theta << ")" << std::endl;
-    }
 }
 
 void Vcu::updateEdges(const std::vector<EdgeInfo>& edges) 

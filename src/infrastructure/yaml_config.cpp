@@ -23,9 +23,11 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.amr_params.wheel_radius = config["amr_params"]["wheel_radius"].as<double>();
     cfg.amr_params.wheel_base = config["amr_params"]["wheel_base"].as<double>();
     cfg.amr_params.max_speed = config["amr_params"]["max_speed"].as<double>();
-    cfg.amr_params.max_angular_speed = config["amr_params"]["max_angular_speed"].as<double>();
-    cfg.amr_params.max_acceleration = config["amr_params"]["max_acceleration"].as<double>();
-    cfg.amr_params.max_deceleration = config["amr_params"]["max_deceleration"].as<double>();
+    cfg.amr_params.min_speed = config["amr_params"]["min_speed"].as<double>();
+    cfg.amr_params.angularSpeedMax = config["amr_params"]["angularSpeedMax"].as<double>();
+    cfg.amr_params.angularSpeedMin = config["amr_params"]["angularSpeedMin"].as<double>();
+    cfg.amr_params.accelerationMax = config["amr_params"]["accelerationMax"].as<double>();
+    cfg.amr_params.decelerationMax = config["amr_params"]["decelerationMax"].as<double>();
     cfg.amr_params.max_angular_acceleration = config["amr_params"]["max_angular_acceleration"].as<double>();
     cfg.amr_params.max_angular_deceleration = config["amr_params"]["max_angular_deceleration"].as<double>();
     cfg.amr_params.mass_vehicle = config["amr_params"]["mass_vehicle"].as<double>();
@@ -33,6 +35,10 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.amr_params.max_torque = config["amr_params"]["max_torque"].as<double>();
     cfg.amr_params.friction_coeff = config["amr_params"]["friction_coeff"].as<double>();
     cfg.amr_params.max_rpm_deviation = config["amr_params"]["max_rpm_deviation"].as<double>();
+    cfg.amr_params.heightMax = config["amr_params"]["heightMax"].as<double>();
+    cfg.amr_params.heightMin = config["amr_params"]["heightMin"].as<double>();
+    cfg.amr_params.width = config["amr_params"]["width"].as<double>();
+    cfg.amr_params.length = config["amr_params"]["length"].as<double>();
 
     if(config["speedup_ratio"])
     {
@@ -43,8 +49,8 @@ AmrConfig YamlConfig::load(const std::string& filename)
         cfg.speedup_ratio  = 1.0;
     }
 
-    cfg.visualization_publish_period = config["visualization_publish_period"].as<double>();
-    cfg.state_publish_period = config["state_publish_period"].as<double>();
+    cfg.mqtt.visualization_publish_period = config["mqtt"]["visualization_publish_period"].as<double>();
+    cfg.mqtt.state_publish_period = config["mqtt"]["state_publish_period"].as<double>();
     cfg.control_period = config["control_period"].as<double>();
     cfg.vehicle_type = config["vehicle_type"].as<std::string>();
 
@@ -56,6 +62,10 @@ AmrConfig YamlConfig::load(const std::string& filename)
     cfg.battery_params.max_charge_per_sec = config["battery_params"]["max_charge_per_sec"].as<double>();
     
     cfg.mqtt.server_address = config["mqtt"]["server_address"].as<std::string>();
+    
+    cfg.initial_pose.x = config["initial_pose"]["x"].as<double>();
+    cfg.initial_pose.y = config["initial_pose"]["y"].as<double>();
+    cfg.initial_pose.heading = config["initial_pose"]["heading"].as<double>();
 
     return cfg;
 }

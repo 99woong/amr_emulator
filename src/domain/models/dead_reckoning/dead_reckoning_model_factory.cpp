@@ -36,6 +36,6 @@ std::shared_ptr<ideadReckoningModel> DeadReckoningModelFactory::create(
     else 
     {
         std::cerr << "[DeadReckoningModelFactory] Unknown model_type: '" << vehicle_type << "'" << std::endl;
-        // throw std::invalid_argument("Unknown DeadReckoningModel type: " + vehicle_type);
+        throw std::invalid_argument("Unknown DeadReckoningModel type: " + vehicle_type);
     }
 }

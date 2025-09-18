@@ -11,19 +11,17 @@ Navigation::Navigation() : target_x_(50), target_y_(50)
 
 }
 
-void Navigation::setTarget(double x, double y, double theta)
+void Navigation::setTarget(double x, double y)
 {
     target_x_ = x;
     target_y_ = y;
-    target_theta_ = theta;
     use_arc_ = false;
 }
 
-void Navigation::setArcTarget(double x, double y, double theta, double center_x, double center_y, double radius, double start_angle, double end_angle, bool clockwise)
+void Navigation::setArcTarget(double x, double y, double center_x, double center_y, double radius, double start_angle, double end_angle, bool clockwise)
 {
     target_x_ = x;
     target_y_ = y;
-    target_theta_ = theta;
     arc_center_x_ = center_x;
     arc_center_y_ = center_y;
     arc_radius_ = radius;
@@ -72,8 +70,6 @@ void Navigation::update(double current_x, double current_y, double current_theta
             }
         }
     }
-
-
 
     //충돌 및 감속 영역에 따른 속도 비율 계산
     double speed_scale = 1.0;
@@ -145,11 +141,9 @@ void Navigation::update(double current_x, double current_y, double current_theta
     // std::cout << "navigation : " << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
 }
 
-void Navigation::updateArc(double current_x, double current_y, double current_theta,
-                           double& out_linear, double& out_angular)
+void Navigation::updateArc(double current_x, double current_y, double current_theta, double& out_linear, double& out_angular)
 {
-    const double arc_follow_speed = 1.0;  // 원호 주행 선속도 예시
-
+    const double arc_follow_speed = 2.0;  // 원호 주행 선속도 예시
 
     // 원호 중심과 현재 위치 거리
     double dx = current_x - arc_center_x_;

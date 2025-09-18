@@ -9,7 +9,7 @@ MotorController::MotorController(const AmrConfig& config)
     : linear_vel_cmd_(0), angular_vel_cmd_(0),
       linear_vel_actual_(0), angular_vel_actual_(0),
       left_rpm_(0.0), right_rpm_(0.0),
-      wheel_base_(config.amr_params.wheel_base), max_speed_(config.amr_params.max_speed), max_angular_speed_(config.amr_params.max_angular_speed),
+      wheel_base_(config.amr_params.wheel_base), max_speed_(config.amr_params.max_speed), max_angular_speed_(config.amr_params.angularSpeedMax),
       wheel_radius_(config.amr_params.wheel_radius)
 {
     cout << "wheel_base_ : " << wheel_base_ << endl;

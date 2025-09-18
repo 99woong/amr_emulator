@@ -14,8 +14,8 @@ void AmrServerApp::run(const std::string& config_path)
 
     const double speedup = config.speedup_ratio;
     const double dt_control = config.control_period;       // 내부 제어 주기(10ms)
-    const double dt_state = config.state_publish_period;           // state topic (1초)
-    const double dt_vis = config.visualization_publish_period;            // visualization topic (50ms)
+    const double dt_state = config.mqtt.state_publish_period;           // state topic (1초)
+    const double dt_vis = config.mqtt.visualization_publish_period;            // visualization topic (50ms)
     const double dt_master = 0.01;        // 최소 단위 루프(가급적 작게)
 
     double sim_time = 0.0;
@@ -30,12 +30,6 @@ void AmrServerApp::run(const std::string& config_path)
 
     while (true)
     {
-        // auto current_time = std::chrono::high_resolution_clock::now();
-        // auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(
-        //     current_time - last_time).count();
-
-        // sim_time += elapsed * speedup;
-
         sim_time += dt_master * speedup;
         auto& amrs = manager.getAmrs();
        
@@ -64,7 +58,6 @@ void AmrServerApp::run(const std::string& config_path)
                         other_positions.push_back(all_positions[i]);
                     }
                 }
-                // std::cout << "amr index: " << idx << std::endl;
 
                 bool is_charging = false;  // 필요시 충전 상태 로직 구현
                 amr->updateBattery(dt_control, is_charging);
@@ -76,8 +69,6 @@ void AmrServerApp::run(const std::string& config_path)
             next_motor_update += dt_control;
         }
 
-        // state topic publish: dt_state 마다 호출
-        // std::cout << "sim_time :  " << sim_time << " next_state_pub : " << next_state_pub << " next_vis_pub : " << next_vis_pub <<std::endl;
         if (sim_time >= next_state_pub) 
         {
             for (size_t i = 0; i < amrs.size(); ++i) 
@@ -112,9 +103,6 @@ void AmrServerApp::run(const std::string& config_path)
             next_vis_pub += dt_vis;
         }
         
-        // last_time = current_time;
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
         std::this_thread::sleep_for(std::chrono::duration<double>(dt_master / speedup));
         // 실제 sleep 시간은 speedup 반영 (dt_master만큼 시뮬 타임 진행)
     }
