@@ -328,33 +328,6 @@ for a_i in axle_pos:
 ```
 ## 배터리 모델
 - simple battery model
-```
-── acceleration
-│   ├── acceleration_model.h
-│   ├── dd_acceleration_model.cpp
-│   ├── dd_acceleration_model.h
-│   ├── dd_acceleration_without_dynamics_model.cpp
-│   ├── dd_acceleration_without_dynamics_model.h
-│   ├── sd_acceleration_model.cpp
-│   └── sd_acceleration_model.h
-├── battery
-│   ├── battery_model.h
-│   ├── battery_model_simple.cpp
-│   └── battery_model_simple.h
-└── dead_reckoning
-    ├── dead_reckoning_euler.cpp
-    ├── dead_reckoning_euler.h
-    ├── dead_reckoning_model_factory.cpp
-    ├── dead_reckoning_model_factory.h
-    ├── dead_reckoning_rk2.CPP
-    ├── dead_reckoning_rk2.h
-    ├── dead_reckoning_rk4.cpp
-    ├── dead_reckoning_rk4.h
-    ├── idead_reckoning.h
-    ├── sd_dead_reckoning_euler.cpp
-    └── sd_dead_reckoning_euler.h
-```
-
 
 ```
 Function UpdateBattery(dt, linear_velocity, angular_velocity, is_charging):
