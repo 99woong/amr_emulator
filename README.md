@@ -121,9 +121,8 @@ src
 ```
 
 
-## 차량 종류별 추측 항법 및 노이즈 모델
-- 차량 종류에 맞는 추측 항법(Dead Reckoning) 알고리즘을 적용하고, 실제 센서 오차를 근사화하기 위해 가우시안 노이즈를 추가
-- 이를 통해 보다 현실적인 시뮬레이션 환경을 제공하고, 실제 로봇의 동작을 예측하고 검증 가능
+## 차량 별 네비게이션 시퀀스
+- 아래의 파라메터로 차량 변경 가능
 ```
 vehicle_type: "differential_driver"     # 차량 종류
 dead_reckoning_model: "rk4"             # 추측 항법 모델 (예: 룽게-쿠타 4차)
@@ -132,16 +131,64 @@ gaussian_noise_level:                   # 가우시안 노이즈 레벨 (구체�
   orientation_std_dev: 0.005            # 방향 표준 편차 (rad)
 ```
 
-```
-│   │   └── dead_reckoning       # 추측항법 알고리즘(오일러,룽게-쿠타 등)을 사용하여 로봇의 이동 위치를 예측, 교체 가능
-│   │       ├── dead_reckoning_euler.cpp
-│   │       ├── dead_reckoning_euler.h
-│   │       ├── deadReckoningModelFactory.cpp
-│   │       ├── deadReckoningModelFactory.h
-│   │       ├── dead_reckoning_rk4.cpp
-│   │       ├── dead_reckoning_rk4.h
-│   │       └── idead_reckoning.h
-```
+- 차량 종류에 맞는 네비게이션의 제어루프는 아래와 같다
+  - Controller에서 바퀴 RPM 및 조향각 추출
+  - Localizer(Dead reckoning) 위치 및 자세 추정
+  - Planning module에서 현재 및 타겟 위치에 따른 속도명령 생성(Linear, angular velocy)
+  - Controller에 속도 명령적용 및 실제 속도변환(가감속 적용)
+  
+- Differential drive
+- Steering drive
+  - Localizer(Dead reckoning)
+    - Input : Wheel spped[RPM], Steering angle[degree], dt(경과시간)
+    - Linear speed:
+
+      $$v=\frac{2\pi \cdot radius_{wheel} \cdot rpm }{60} + noise$$
+      
+    - Angular speed:
+      
+      $$w=\frac{v}{wheel base} \cdot tan(\delta)$$
+
+      $$\delta$$ : 조향각
+      
+    - update
+
+      $$x_{t+1} = x_{t} + v \cdot cos(\theta ) \cdot dt$$
+
+      $$y_{t+1} = y_{t} + v \cdot sin(\theta ) \cdot dt$$
+
+      $$\theta_{t+1} = \theta_{t} + w \cdot dt$$
+      
+  - Planning
+    - 거리
+ 
+      $$d=\sqrt{(x_{goal}-x)^{2}+(y_{goal}-y)^{2}}$$
+      
+    - 각도
+ 
+      $$\theta_{target} = arctan2(y_{goal}-y, x_{goal}-x)$$
+      
+      $$\Delta \theta=\theta_{target} - \theta$$
+      
+    - 속도명령
+   
+      $$v_{cmd}=clamp(d,0,v_{max})\cdot stpeed scale$$
+ 
+      $$w_{cmd}=clamp(\Delta \theta, -w_{max},w_{max}) \cdot speed scale$$
+      
+  - Controller
+    - 속도 제한
+ 
+      $$v_{cmd} <- clamp(v_{cmd}, -v_{max}, v_{max})$$
+ 
+      
+    - 선/각속도 -> 조향/RPM 변환
+    - 가감속 적용(option)
+    
+- Quad drive
+
+
+
 ![Diagram](image/dr_euler.png)
 ![Diagram](image/dr_rk4.png)
 ![Diagram](image/dr_rk4_2.png)
@@ -262,8 +309,8 @@ AmrManager::AmrManager(const AmrConfig& config)
 }
 
 ```
-## 다축조향모델 추가
-- 바이시클 기구학(Bicycle Kinematics)
+## 차량모델 지원
+- 
   - 차량을 한 쌍의 앞바퀴와 뒷바퀴로 단순화한 모델로, 조향각과 차량 전체 궤적 계산에 많이 사용
 - 다축조향 확장(각 조향축별로)
   - 축의 위치(길이 방향 위치)와 횡간거리(차폭)
@@ -328,34 +375,42 @@ for a_i in axle_pos:
 ```
 ## 배터리 모델
 - simple battery model
+배터리 잔량은 시간 $\Delta t$에서 다음과 같이 갱신된다.
 
-```
-Function UpdateBattery(dt, linear_velocity, angular_velocity, is_charging):
-    If is_charging is True:
-        If battery_charge < charge_stop_threshold:
-            Increase battery_charge by (max_charge_rate * dt)
-            Clamp battery_charge to a maximum of 100%  
-    Else (not charging):
-        If linear_velocity and angular_velocity are approximately zero:
-            Decrease battery_charge by (idle_discharge_rate * dt)  # idle discharge
-        Else:
-            discharge = CalculateDischarge(linear_velocity, angular_velocity, dt)
-            Decrease battery_charge by discharge
-        Clamp battery_charge to a minimum of 0%
+ $$B\left(t+\Delta t  \right )=\begin{Bmatrix}
+min(100,B(t)+r_{charge}\cdot \Delta t), & if \; isCharging = True, B(t)<\theta _{stop} \\
+max(0,B(t)-r_{idle}\cdot \Delta t), & if \; isCharging = False, v\approx 0, w\approx 0 \\
+max(0,B(t)-D(v,w,\Delta t)), & if\; isCharging = False, (v,w)\neq (0,0) \\
+\end{Bmatrix}$$
 
-Function CalculateDischarge(linear_velocity, angular_velocity, dt) returns discharge_amount:
-    linear_speed = absolute value of linear_velocity
-    If linear_speed < low_speed_threshold:
-        linear_discharge_rate = low_rate
-    Else if linear_speed < medium_speed_threshold:
-        linear_discharge_rate = medium_rate
-    Else:
-        linear_discharge_rate = high_rate
-    angular_discharge_rate = angular_factor * absolute value of angular_velocity
-    total_discharge_rate = linear_discharge_rate + angular_discharge_rate
-    discharge_amount = total_discharge_rate * dt
-    Return discharge_amount
-```
+- $$B(t)$$: 배터리 잔량(%)
+- $$\Delta t\$$: 시간간격
+- $$r_c$$: 최대충전속도(charge rate)
+- $$r_{idle}$$: 유휴방전속도(idle discharge rate)
+- $$\theta_{stop} $$: 충전중단 임계값(%)
+- $$v$$: 선속도(linear velocity)
+- $$w$$: 각속도(angular velocity)
+
+
+배터리 소모량 $$D(v,w,\Delta t)$$은 다음과 같다
+
+$$D(v,w,\Delta t) = r_{total}(v,w) \cdot \Delta t$$
+
+총 소모율:
+
+$$r_{total}(v,w) = r_{linear}(v) + r_{angular}(w)$$
+
+선속도에 따른 소모율:
+
+$$r_{linear} = \begin{Bmatrix}
+r_{low}, & \left | v\right | < v_{low} \\
+r_{med}, & v_{low} < \left | v\right | < v_{low} < v_{med} \\
+r_{high}, & \left | v\right | > v_{med} \\
+\end{Bmatrix}$$
+
+
+
+
 
 
 # 설치
