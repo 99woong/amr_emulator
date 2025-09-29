@@ -175,14 +175,40 @@ gaussian_noise_level:                   # 가우시안 노이즈 레벨 (구체�
       $$v_{cmd}=clamp(d,0,v_{max})\cdot stpeed scale$$
  
       $$w_{cmd}=clamp(\Delta \theta, -w_{max},w_{max}) \cdot speed scale$$
+
+    - 원호 추종
+        - 중심까지 거리
+   
+          $$d_{center} = \sqrt{(x-x_{c})^2 + (y-y_{c})^2}$$       
+          
+        - 반지름 오차
+   
+          $$r_{error}=r_{arc}-d_{center}$$
+          
+        - 요구 선속도/각속도
+          $$v_{cmd}=v_{arc_follow}$$
+
+          $$w_{cmd}=\pm\frac{v_{arc_follow}}{r_{arc}}$$
+
+          $$(+:반시계, -:시계방향추종)$$
+          
+          
       
   - Controller
     - 속도 제한
  
-      $$v_{cmd} <- clamp(v_{cmd}, -v_{max}, v_{max})$$
+      $$v_{cmd} \leftarrow clamp(v_{cmd}, -v_{max}, v_{max})$$
  
-      
+      $$w_{cmd} \leftarrow clamp(w_{cmd}, -w_{max}, w_{max})$$
+       
     - 선/각속도 -> 조향/RPM 변환
+ 
+      $$rpm = \frac{v}{2\pi r_{wheel}} \cdot 60$$
+
+      $$\delta = arctan(\frac{L \cdot w}{v})$$
+ 
+      $$\delta$$ : 조향각
+      
     - 가감속 적용(option)
     
 - Quad drive
