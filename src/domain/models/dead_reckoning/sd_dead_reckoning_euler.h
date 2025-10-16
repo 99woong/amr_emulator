@@ -15,6 +15,7 @@ public:
 
 private:
     double x_, y_, theta_;
+    double steering_angle_;
     double wheel_base_, wheel_radius_;
     double rpm_noise_std_; 
     mutable std::mt19937 generator_;

@@ -95,42 +95,16 @@ void Navigation::update(double current_x, double current_y, double current_theta
         double dy = target_y_ - current_y;
         double distance = std::sqrt(dx * dx + dy * dy);
         
-        // std::cout << "go straight " << std::endl;
-        if (distance < position_reach_threshold)
-        {
-            // 목표 방향과 현재 방향 차이 계산 및 보정
-            double angle_diff = target_theta_ - current_theta;
-            while (angle_diff > M_PI)  angle_diff -= 2.0 * M_PI;
-            while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+        double target_angle = std::atan2(dy, dx);
+        double angle_diff = target_angle - current_theta;
+        while (angle_diff > M_PI)  angle_diff -= 2.0 * M_PI;
+        while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
 
-            // 위치에 거의 도달하면 선속도 제어는 0으로 하고, 각속도만 각도 차이에 맞춰 조절
-            out_linear = 0.0;
+        out_linear = std::clamp(distance, 0.0, 10.0) * speed_scale;
+        out_angular = std::clamp(angle_diff, -1.0, 1.0) * speed_scale;
 
-            // 각도 차이가 작으면 멈추고, 크면 회전하도록 각속도 설정
-            // if (std::abs(angle_diff) < angle_reach_threshold)
-            if (1)
-            {
-                out_angular = 0.0;  // 목표 각도 도달, 정지
-            }
-            else
-            {
-                // 각속도 클램프 (-1 ~ 1), 필요시 제어 상수 곱해 감도 조절
-                double angular_speed = std::clamp(angle_diff, -1.0, 1.0);
-                out_angular = angular_speed * speed_scale;
-            }
-        }
-        else
-        {
-            // 위치 도달 전에는 기존 위치 추종 모드
+        std::cout << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << target_angle << " " << current_theta << std::endl;
 
-            double target_angle = std::atan2(dy, dx);
-            double angle_diff = target_angle - current_theta;
-            while (angle_diff > M_PI)  angle_diff -= 2.0 * M_PI;
-            while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
-
-            out_linear = std::clamp(distance, 0.0, 10.0) * speed_scale;
-            out_angular = std::clamp(angle_diff, -1.0, 1.0) * speed_scale;
-        }
     }
     else
     {
@@ -140,6 +114,23 @@ void Navigation::update(double current_x, double current_y, double current_theta
 
     // std::cout << "navigation : " << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << current_theta << " " << out_linear << " " << out_angular << std::endl;
 }
+
+void Navigation::computeTargetControl(double current_x, double current_y, double current_theta,
+                                      double speed_scale, double& out_linear, double& out_angular)
+{
+    double dx = target_x_ - current_x;
+    double dy = target_y_ - current_y;
+    double distance = std::sqrt(dx * dx + dy * dy);
+
+    double target_angle = std::atan2(dy, dx);
+    double angle_diff = target_angle - current_theta;
+    while (angle_diff > M_PI)  angle_diff -= 2.0 * M_PI;
+    while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+
+    out_linear = std::clamp(distance, 0.0, 10.0) * speed_scale;
+    out_angular = std::clamp(angle_diff, -1.0, 1.0) * speed_scale;
+}
+
 
 void Navigation::updateArc(double current_x, double current_y, double current_theta, double& out_linear, double& out_angular)
 {
@@ -170,17 +161,15 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
             angle_diff += 2.0 * M_PI;
     }
 
-    const double angle_threshold = 0.05; // 3도 정도 도달 허용
-    // std::cout << "angle_diff : " << std::abs(angle_diff) << std::endl;
-    if (std::abs(angle_diff) < angle_threshold) 
-    {
-        // 원호 끝점 도달 시 원호 모드 종료 (직선 모드 전환 or 정지)
-        use_arc_ = false;
-        out_linear = 0.0;
-        out_angular = 0.0;
-        // std::cout << "out_linear : " << out_linear << " " << out_angular <<  std::endl;
-        return;
-    }
+    // const double angle_threshold = 0.05; // 3도 정도 도달 허용
+    // if (std::abs(angle_diff) < angle_threshold) 
+    // {
+    //     // 원호 끝점 도달 시 원호 모드 종료 (직선 모드 전환 or 정지)
+    //     use_arc_ = false;
+    //     out_linear = 0.0;
+    //     out_angular = 0.0;
+    //     return;
+    // }
 
     // 조향은 원호의 중심 방향으로 회전: 원호 반경과 각속도 관계
     // 각속도 w = v / r
@@ -190,8 +179,9 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
     if (arc_clockwise_)
         angular_speed = -angular_speed;
 
-    // radius_error 등을 반영해 약간 보정 (플랭크 스테어링 같은 보정 가능)
-    // radius_error가 크면 속도 줄이거나 각속도 조절 가능
+    // radius_error 등을 반영해 약간 보정 
+    // radius_error가 크면 속도 줄이거나 각속도 조정
+    // applyRadiusErrorCorrection(radius_error, linear_speed, angular_speed);
 
     out_linear = linear_speed;
     out_angular = angular_speed;
@@ -200,4 +190,29 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
     // << " cy: " << current_y << " acy: " << arc_center_y_
     // <<  " dtc: " << distance_to_center << " re: " << radius_error
     // << " ad: " << angle_diff << " ls: " << linear_speed << " as: " << angular_speed << std::endl;
+}
+
+// void Navigation::Idle((double current_x, double current_y, double current_theta)
+// {
+//     target_x_ = current_x;
+//     target_y_ = current_y;
+//     target_t
+// }
+
+
+void Navigation::applyRadiusErrorCorrection(double radius_error, double& linear_speed, double& angular_speed)
+{
+    const double max_radius_error = 1.5;
+    const double max_speed_reduction = 0.5;
+    const double max_angular_increase = 0.5;
+
+    double error_ratio = std::min(std::abs(radius_error) / max_radius_error, 1.0);
+
+    // 선속도 보정
+    linear_speed *= (1.0 - max_speed_reduction * error_ratio);
+
+    // 각속도 보정
+    // double correction_factor = 1.0 + (max_angular_increase - 1.0) * error_ratio;
+    double correction_factor = 1.0 + (max_angular_increase - 1.0) * error_ratio;
+    angular_speed *= correction_factor;
 }

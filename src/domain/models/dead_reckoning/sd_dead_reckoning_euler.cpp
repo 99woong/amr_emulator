@@ -16,33 +16,15 @@ void SDdeadReckoningEuler::setInitialPose(double x, double y, double theta)
     x_ = x; y_ = y; theta_ = theta;
 }
 
-void SDdeadReckoningEuler::update(double rpm, double steering_angle, double dt) 
+void SDdeadReckoningEuler::update(double rpm, double steering_angle_, double dt) 
 {
-
-    // std::cout << "SDdeadReckoningEuler::update : " << rpm << " " << steering_angle << std::endl;
-
-    // double noisy_rpm = rpm + noise_dist_(generator_);
-
-    // std::cout <<"dr lrpm : " << left_rpm << " rrpm : " << right_rpm <<std::endl;
-
     double v = (2.0 * M_PI * wheel_radius_ * rpm) / 60.0;
-    
-    // std::cout << "pure v : " << v << std::endl;
-
     v += noise_dist_(generator_);
 
-    // std::cout << "v : " << v << std::endl;
-
-    // double v = rpm + noise_dist_(generator_);
-    double w = v / wheel_base_ * std::tan(steering_angle);
-
-    // std::cout <<"v : " << v << " w : " << w <<std::endl;
+    double w = v / wheel_base_ * std::tan(steering_angle_);
     x_ += v * std::cos(theta_) * dt;
     y_ += v * std::sin(theta_) * dt;
     theta_ += w * dt;
-
-    // std::cout << "[1SDdeadReckoningEuler] : " << rpm << " " << steering_angle << 
-    //             " " << x_ << " " << y_ << " " << theta_ << std::endl;
 }
 
 

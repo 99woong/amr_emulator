@@ -19,8 +19,8 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     }
     else
     {
-        // std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
         double radius = std::hypot(target_x - center_x, target_y - center_y);
         
         // double radius = 27.1;
@@ -33,6 +33,11 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
         navigation_->setArcTarget(target_x_, target_y_, center_x, center_y, radius, start_angle, end_angle, clockwise);
     }
 }
+
+// void Vcu::stopVehicle()
+// {
+
+// }
 
 // void Vcu::setTargetArc(double start_x, double start_y, double center_x,
 //     double center_y, double end_x, double end_y, double wheeBase)
@@ -61,6 +66,17 @@ void Vcu::update(double dt, const std::vector<std::pair<double, double>>& other_
     navigation_->update(current_x, current_y, current_theta, linear_vel_cmd, angular_vel_cmd, other_robot_positions);
     motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
     motor_->update(dt);
+}
+
+void Vcu::Idle(double dt)
+{
+
+    double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
+    localizer_->getPose(current_x, current_y, current_theta);
+    navigation_->setTarget(current_x, current_y);
+    motor_->setVelocity(0.0, 0.0);
+    motor_->update(dt);
+    // std::cout << "Vcu::Idle()" << current_x << " " << current_y << " " << current_theta << std::endl;
 }
 
 void Vcu::setInitialPose(double x, double y, double theta)
@@ -114,3 +130,4 @@ void Vcu::updateEdges(const std::vector<EdgeInfo>& edges)
                   << ", EndNodeId: " << edge.endNodeId << std::endl;
     }
 }
+

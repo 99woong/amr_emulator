@@ -19,8 +19,9 @@ private:
     double arc_start_angle_, arc_end_angle_;
     bool arc_clockwise_;
 
-    void updateArc(double current_x, double current_y, double current_theta,
-                   double& out_linear, double& out_angular);
-    void updateStraight(double current_x, double current_y, double current_theta,
-                        double& out_linear, double& out_angular);    
+    void updateArc(double current_x, double current_y, double current_theta, double& out_linear, double& out_angular);
+    void updateStraight(double current_x, double current_y, double current_theta, double& out_linear, double& out_angular);    
+    void applyRadiusErrorCorrection(double radius_error, double& linear_speed, double& angular_speed);      
+    void computeTargetControl(double current_x, double current_y, double current_theta,
+                                      double speed_scale, double& out_linear, double& out_angular);                  
 };

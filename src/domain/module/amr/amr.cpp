@@ -33,16 +33,33 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
     std::cout << "set edge id : " << edge.edgeId << std::endl;
     const NodeInfo* target_node = nullptr;
     const NodeInfo* start_node = nullptr;
+    const NodeInfo* center_node = nullptr;
     auto it = std::find_if(nodes.begin(), nodes.end(),
         [&](const NodeInfo& n) { return n.nodeId == edge.endNodeId; });
     if (it != nodes.end())
         target_node = &(*it);
 
     auto sit = std::find_if(nodes.begin(), nodes.end(),
-        [&](const NodeInfo& n) { return n.nodeId == edge.startNodeId; });
+        [&](const NodeInfo& n) { return n.nodeId == edge.startNodeId; });        
     if (sit != nodes.end())
+    {
         start_node = &(*sit);
+        std::cout<<"startn: "<< start_node->nodeId << std::endl;
+    }
 
+    for(auto node : nodes)
+    {
+        std::cout << "nodes : " << node.nodeId<< std::endl;
+    }
+
+    std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
+    auto cit = std::find_if(nodes.begin(), nodes.end(),
+        [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
+    if(cit != nodes.end())
+    {
+        center_node = &(*cit);
+        std::cout<<"centern: "<< center_node->nodeId << std::endl;
+    }
 
     if(edge.has_turn_center) 
     {
@@ -51,8 +68,10 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
             start_node ? start_node->y : 0.0,
             target_node ? target_node->x : 0.0,
             target_node ? target_node->y : 0.0,
-            edge.turn_center_x,
-            edge.turn_center_y,
+            center_node ? center_node->x : 0.0,
+            center_node ? center_node->y : 0.0,
+            // edge.turn_center_x,
+            // edge.turn_center_y,
             true,
             wheel_base
         );
@@ -163,14 +182,19 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     static double reach_distance_radius = 0.1;
     static double angle_area_radius = 0.1;
 
-    if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
-        return;
-
-    // vcu_->update(dt);
-    vcu_->update(dt, other_robot_positions);
-
+    // vcu_->update(dt, other_robot_positions);
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);
+
+    if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
+    {
+        // std::cout << "Idle Vehible!! " << std::endl;
+        vcu_->Idle(dt);
+
+        return;
+    }
+    vcu_->update(dt, other_robot_positions);
+
 
     const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
     const NodeInfo* target_node = nullptr;
@@ -196,8 +220,10 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
 
     if(cur_edge.has_turn_center)
     {
-        reach_distance_radius = 2.0;
-        angle_area_radius = 2.0;
+        reach_distance_radius = 0.8;
+        angle_area_radius = 0.8;
+        // reach_distance_radius = 0.1;
+        // angle_area_radius = 0.1;
     }
     else
     {
@@ -205,6 +231,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         angle_area_radius = 0.1;
     }
     
+    // std::cout<< "dist: " << dist << " " << reach_distance_radius<<std::endl;
     if (dist < reach_distance_radius)
     {
         cur_edge_idx_++;
@@ -216,10 +243,12 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
             nodes_.clear();
             edges_.clear();
             cur_edge_idx_ = 0;
+            
             return;
         }
         const EdgeInfo& next_edge = edges_[cur_edge_idx_];
 
+        std::cout<< "idx: " << cur_edge_idx_ << "edge " << edges_[cur_edge_idx_].edgeId <<std::endl;
         setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
     }
 }

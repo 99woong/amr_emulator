@@ -22,6 +22,8 @@ public:
     INavigation& getNavigation() override;
     ILocalizer& getLocalizer() override;
 
+    void Idle(double dt);
+
 
 private:
     std::unique_ptr<IMotorController> motor_;

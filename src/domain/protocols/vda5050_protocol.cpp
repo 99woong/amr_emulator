@@ -54,11 +54,11 @@ void Vda5050Protocol::useDefaultConfig(const std::string& server_address)
     mqtt_callback_ = std::make_shared<Vda5050MqttCallback>(this);
     mqtt_client_->set_callback(*mqtt_callback_);
 
-    state_topic_ = "vda5050/agvs/" + agv_id_ + "/state";
-    order_topic_ = "vda5050/agvs/" + agv_id_ + "/order";
-    instant_actions_topic = "vda5050/agvs/" + agv_id_ + "/instantActions";
-    visualization_topic_ = "vda5050/agvs/" + agv_id_ + "/visualization";
-    connection_topic_ = "vda5050/agvs/" + agv_id_ + "/connection";
+    state_topic_ = "vda5050/v1/ZENIXROBOTICS/" + agv_id_ + "/state";
+    order_topic_ = "vda5050/v1/ZENIXROBOTICS/" + agv_id_ + "/order";
+    instant_actions_topic = "vda5050/v1/ZENIXROBOTICS/" + agv_id_ + "/instantActions";
+    visualization_topic_ = "vda5050/v1/ZENIXROBOTICS/" + agv_id_ + "/visualization";
+    connection_topic_ = "vda5050/v1/ZENIXROBOTICS/" + agv_id_ + "/connection";
 }
 
 void Vda5050Protocol::start() 
@@ -157,7 +157,7 @@ std::string Vda5050Protocol::makeFactsheetMessage()
     factsheet_json["headerId"] = factsheet_header_id_++;
     factsheet_json["timestamp"] = getCurrentTimestampISO8601();
     factsheet_json["version"] = "0.0.1";
-    factsheet_json["manufacturer"] = "ZENIX_ROBOTICS";       // 실제 회사명으로 변경
+    factsheet_json["manufacturer"] = "ZenixRobotics";       // 실제 회사명으로 변경
     factsheet_json["serialNumber"] = agv_id_;                  // agv_id_ 멤버 변수 정의 필요
 
     nlohmann::json physicalParams;
@@ -191,7 +191,7 @@ std::string Vda5050Protocol::makeConnectMessage()
     factsheet_json["headerId"] = factsheet_header_id_++;
     factsheet_json["timestamp"] = getCurrentTimestampISO8601();
     factsheet_json["version"] = "0.0.1";
-    factsheet_json["manufacturer"] = "ZENIX_ROBOTICS";       // 실제 회사명으로 변경
+    factsheet_json["manufacturer"] = "ZenixRobotics";       // 실제 회사명으로 변경
     factsheet_json["serialNumber"] = agv_id_;                  // agv_id_ 멤버 변수 정의 필요   
     factsheet_json["connectionState"] = detectConnection();                  
 
@@ -256,7 +256,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             }
         }        
 
-
         if (!order_json.contains("nodes") || !order_json.contains("edges")) 
         {
             std::cerr << "[Vda5050Protocol] Order missing nodes or edges\n";
@@ -265,6 +264,8 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 
         //nodes ID별 맵생성
         std::unordered_map<std::string, NodeInfo> node_map;
+        std::vector<NodeInfo> ordered_nodes;
+
         for (const auto& node : order_json["nodes"])
         {
             NodeInfo n;
@@ -274,11 +275,12 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             {
                 n.x = node["nodePosition"].value("x", 0.0);
                 n.y = node["nodePosition"].value("y", 0.0);
-                // n.theta = node["nodePosition"].value("theta", 0.0);
             }
             node_map[n.nodeId] = n;
+
+            ordered_nodes.push_back(n);
             
-//            std::cout << "[Vda5050Protocol] Parsed NodeId: " << n.nodeId << ", Pos: (" << n.x << "," << n.y << "," << n.theta << ")" << std::endl;            
+           std::cout << "[Vda5050Protocol] Parsed NodeId: " << n.nodeId << ", Pos: (" << n.x << "," << n.y << ")" << std::endl;            
         }
 
         std::vector<EdgeInfo> edges;
@@ -289,75 +291,25 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.sequenceId = edge.value("sequenceId", 0);
             e.startNodeId = edge.value("startNodeId", "");
             e.endNodeId = edge.value("endNodeId", "");
+            e.centerNodeId = edge.value("centerNodeId", "");
             e.maxSpeed = edge.value("maxSpeed", 0.0);
             
-            if (edge.contains("turnCenter") && edge["turnCenter"].is_object())
+            if (edge.contains("centerNodeId"))
             {
                 e.has_turn_center = true;
-                e.turn_center_x = edge["turnCenter"].value("x", 0.0);
-                e.turn_center_y = edge["turnCenter"].value("y", 0.0);
-                std::cout << " Center : (" << e.turn_center_x << ", " << e.turn_center_y << ")" << std::endl;
             }
+
+            std::cout << "start: " << e.sequenceId << " " << "center: " << e.centerNodeId << " " << "end: " << e.endNodeId << std::endl;
             
             edges.push_back(e);
-
-            std::cout << "[Vda5050Protocol] Parsed EdgeId: " << e.edgeId << ", Start: " << e.startNodeId << ", End: " << e.endNodeId << std::endl;            
         }
-
-        for(int i=0;i<edges.size();i++)
-            std::cout << "edge_ id : " << edges[i].edgeId << std::endl;
 
         std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
         {
             return a.sequenceId < b.sequenceId;
         });
 
-        for(int i=0;i<edges.size();i++)
-            std::cout << "[after] edge_ id : " << edges[i].edgeId << std::endl;
-
-        // 3) edges를 따라 순차적 노드 경로 리스트 생성
-        std::vector<NodeInfo> ordered_nodes;
-        if (!edges.empty()) 
-        {
-            // 최초 에지의 startNodeId 노드 위치를 AMR 초기 위치로 설정
-            const std::string& init_node_id = edges.front().startNodeId;
-            auto it = node_map.find(init_node_id);
-            if (it != node_map.end())
-            {
-                const NodeInfo& init_node = it->second;
-                // amr->getVcu()->setInitialPose(init_node.x, init_node.y, init_node.theta);                
-            }
-            else
-            {
-                std::cerr << "[Vda5050Protocol] Initial node info missing: " << init_node_id << std::endl;
-            }
-
-
-            std::string current_node_id = edges.front().startNodeId;
-            std::cout << "load edge : " << current_node_id << std::endl;
-            ordered_nodes.push_back(node_map[current_node_id]);
-
-            for(const auto& edge : edges) 
-            {
-                // endNode를 추가 (startNode는 이미 추가됐으므로 중복 방지)
-                if (node_map.find(edge.endNodeId) != node_map.end()) 
-                {
-                    std::cout << " ordered_nodes : " << node_map[edge.endNodeId].nodeId << std::endl; 
-                    ordered_nodes.push_back(node_map[edge.endNodeId]);
-                } 
-                else 
-                {
-                    std::cerr << "[Vda5050Protocol] Missing node info for id: " << edge.endNodeId << std::endl;
-                }
-            }
-        } 
-        else 
-        {
-            std::cerr << "[Vda5050Protocol] Empty edges array in order\n";
-        }
-
         // 4) AMR에 edges 기반 순서로 된 노드 리스트와 원본 edges 전달
-        // amr->setOrder(ordered_nodes, edges);
         amr->setOrder(ordered_nodes, edges, 15.0);
 
         std::cout << "[Vda5050Protocol] Order processed with " << ordered_nodes.size()
@@ -394,12 +346,15 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
 void Vda5050Protocol::publishVisualizationMessage(IAmr* amr) 
 {
     if(!amr || !mqtt_client_ || !mqtt_client_->is_connected())
+    {
+        // std::cout << "return" <<std::endl;
         return;
+    }
 
     try
     {
         std::string viz_msg = makeVisualizationMessage(amr);
-        // std::cout << "publishVisualizationMessage: " << viz_msg << std::endl;
+        // std::cout << "publishVisualizationMessage: " << visualization_topic_ << " " << viz_msg << std::endl;
 
         if(!viz_msg.empty())
         {
@@ -426,8 +381,8 @@ std::string Vda5050Protocol::makeVisualizationMessage(IAmr* amr)
     // 1. Header 정보
     viz_json["headerId"] = visualization_header_id_++;
     viz_json["timestamp"] = getCurrentTimestampISO8601();
-    viz_json["version"] = "1.1.0";
-    viz_json["manufacturer"] = "Fraunhofer";
+    viz_json["version"] = "0.0.1";
+    viz_json["manufacturer"] = "ZenixRobotics";
     viz_json["serialNumber"] = agv_id_;
 
     // 2. AGV 위치 정보 (x, y, theta)
@@ -466,8 +421,8 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     // ==============================================
     state_json["headerId"] = state_header_id_++;
     state_json["timestamp"] = getCurrentTimestampISO8601();
-    state_json["version"] = "2.0.0";
-    state_json["manufacturer"] = "ZENIX_ROBOTICS";
+    state_json["version"] = "0.0.1";
+    state_json["manufacturer"] = "ZenixRobotics";
     state_json["serialNumber"] = agv_id_;
     
     // ==============================================
@@ -666,7 +621,8 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     nlohmann::json errors = nlohmann::json::array();
     
     // 배터리 부족 경고
-    if (amr->getBatteryPercent() < 20.0) {
+    if (amr->getBatteryPercent() < 20.0) 
+    {
         nlohmann::json battery_error = {
             {"errorType", "BATTERY_LOW"},
             {"errorLevel", "WARNING"},
@@ -677,7 +633,8 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     }
     
     // AMR의 기타 에러 상태 확인
-    if (amr_state.find("ERROR") != std::string::npos) {
+    if (amr_state.find("ERROR") != std::string::npos) 
+    {
         nlohmann::json system_error = {
             {"errorType", "SYSTEM_ERROR"},
             {"errorLevel", "FATAL"},
@@ -689,7 +646,8 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     
     // 추가 에러 확인 (센서, 통신 등)
     auto additional_errors = getSystemErrors(amr);
-    for (const auto& error : additional_errors) {
+    for (const auto& error : additional_errors) 
+    {
         nlohmann::json error_json = {
             {"errorType", error.errorType},
             {"errorLevel", error.errorLevel},

@@ -20,7 +20,10 @@ AmrManager::AmrManager(const AmrConfig& config)
    for (int i = 0; i < config_.amr_count; ++i)
    {
         int port = config_.base_port + i;
-        std::string agv_id = "amr_" + std::to_string(i);
+
+        std::stringstream ss;
+        ss << std::setw(4) << std::setfill('0') << i;        
+        std::string agv_id = ss.str();
 
         auto amr = createSingleAmr(i, config_);
 
