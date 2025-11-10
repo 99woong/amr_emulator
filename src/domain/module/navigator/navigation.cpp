@@ -103,7 +103,7 @@ void Navigation::update(double current_x, double current_y, double current_theta
         out_linear = std::clamp(distance, 0.0, 10.0) * speed_scale;
         out_angular = std::clamp(angle_diff, -1.0, 1.0) * speed_scale;
 
-        std::cout << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << target_angle << " " << current_theta << std::endl;
+        // std::cout << target_x_ << " " << target_y_ << " " << current_x << " " << current_y << " " << target_angle << " " << current_theta << std::endl;
 
     }
     else

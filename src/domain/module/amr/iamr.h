@@ -32,4 +32,11 @@ public:
     virtual double getBatteryPercent() const = 0; 
 
     virtual IVcu* getVcu() = 0;  // VCU 접근용 인터페이스
+
+    virtual std::vector<NodeInfo> getCurrentNodes() const = 0;
+    virtual std::vector<NodeInfo> getCompletedNodes() const = 0;
+    virtual std::vector<EdgeInfo> getCurrentEdges() const = 0;
+    virtual std::vector<EdgeInfo> getCompletedEdges() const = 0;
+    virtual std::string getLastNodeId() const = 0;
+    virtual int getLastNodeSequenceId() const = 0;    
 };

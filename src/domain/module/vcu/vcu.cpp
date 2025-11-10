@@ -1,3 +1,4 @@
+// vcu.cpp 
 #include "vcu.h"
 #include <iostream> 
 #include <cmath>
@@ -19,8 +20,8 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     }
     else
     {
-        std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        // std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
         double radius = std::hypot(target_x - center_x, target_y - center_y);
         
         // double radius = 27.1;

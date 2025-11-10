@@ -27,6 +27,13 @@ public:
     void updateBattery(double dt, bool is_charging) override;
     double getBatteryPercent() const override;
 
+    std::vector<NodeInfo> getCurrentNodes() const override;
+    std::vector<NodeInfo> getCompletedNodes() const override;
+    std::vector<EdgeInfo> getCurrentEdges() const override;
+    std::vector<EdgeInfo> getCompletedEdges() const override;
+    std::string getLastNodeId() const override;
+    int getLastNodeSequenceId() const override;    
+
     IVcu* getVcu() override;  
 
 private:
@@ -39,6 +46,9 @@ private:
     std::size_t cur_edge_idx_ = 0;
     std::unique_ptr<Vcu> vcu_;
     std::unique_ptr<IBatteryModel> battery_model_;
+
+    std::vector<NodeInfo> completed_nodes_;
+    std::vector<EdgeInfo> completed_edges_;
 
     Line getLineFromPoints(const NodeInfo& p1, const NodeInfo& p2);
     // NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint); 

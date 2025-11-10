@@ -1,3 +1,4 @@
+//amr.cpp
 #include "amr.h"
 #include <cmath>
 #include <iostream>
@@ -30,7 +31,7 @@ double Amr::getBatteryPercent() const
 void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base)
 {
     // target_node 찾기
-    std::cout << "set edge id : " << edge.edgeId << std::endl;
+    // std::cout << "set edge id : " << edge.edgeId << std::endl;
     const NodeInfo* target_node = nullptr;
     const NodeInfo* start_node = nullptr;
     const NodeInfo* center_node = nullptr;
@@ -44,21 +45,21 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
     if (sit != nodes.end())
     {
         start_node = &(*sit);
-        std::cout<<"startn: "<< start_node->nodeId << std::endl;
+        // std::cout<<"startn: "<< start_node->nodeId << std::endl;
     }
 
     for(auto node : nodes)
     {
-        std::cout << "nodes : " << node.nodeId<< std::endl;
+        // std::cout << "nodes : " << node.nodeId<< std::endl;
     }
 
-    std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
+    // std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
     auto cit = std::find_if(nodes.begin(), nodes.end(),
         [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
     if(cit != nodes.end())
     {
         center_node = &(*cit);
-        std::cout<<"centern: "<< center_node->nodeId << std::endl;
+        // std::cout<<"centern: "<< center_node->nodeId << std::endl;
     }
 
     if(edge.has_turn_center) 
@@ -70,8 +71,6 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
             target_node ? target_node->y : 0.0,
             center_node ? center_node->x : 0.0,
             center_node ? center_node->y : 0.0,
-            // edge.turn_center_x,
-            // edge.turn_center_y,
             true,
             wheel_base
         );
@@ -100,12 +99,81 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     is_angle_adjusting_ = false;
     wheel_base_ = wheel_base;
 
+    completed_nodes_.clear();
+    completed_edges_.clear();
+
     if (!edges_.empty() && vcu_)
     {
         const EdgeInfo& edge = edges_[cur_edge_idx_];
-
         setVcuTargetFromEdge(edge, nodes_, wheel_base);
     }
+}
+
+// 현재 처리 중인 노드들 반환
+std::vector<NodeInfo> Amr::getCurrentNodes() const
+{
+    std::vector<NodeInfo> current;
+    
+    if (edges_.empty() || cur_edge_idx_ >= edges_.size())
+        return current;
+    
+    // 현재 엣지의 endNode를 현재 목표 노드로 간주
+    const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
+    
+    auto it = std::find_if(nodes_.begin(), nodes_.end(),
+        [&](const NodeInfo& n) { return n.nodeId == cur_edge.endNodeId; });
+    
+    if (it != nodes_.end())
+    {
+        current.push_back(*it);
+    }
+    
+    return current;
+}
+
+// 완료된 노드들 반환
+std::vector<NodeInfo> Amr::getCompletedNodes() const
+{
+    return completed_nodes_;
+}
+
+
+// 현재 처리 중인 엣지들 반환
+std::vector<EdgeInfo> Amr::getCurrentEdges() const
+{
+    std::vector<EdgeInfo> current;
+    
+    if (cur_edge_idx_ < edges_.size())
+    {
+        current.push_back(edges_[cur_edge_idx_]);
+    }
+    
+    return current;
+}
+
+// 완료된 엣지들 반환
+std::vector<EdgeInfo> Amr::getCompletedEdges() const
+{
+    return completed_edges_;
+}
+
+
+// 마지막 노드 ID 반환
+std::string Amr::getLastNodeId() const
+{
+    if (completed_nodes_.empty())
+        return "";
+    
+    return completed_nodes_.back().nodeId;
+}
+
+// 마지막 노드 시퀀스 ID 반환
+int Amr::getLastNodeSequenceId() const
+{
+    if (completed_nodes_.empty())
+        return 0;
+    
+    return completed_nodes_.back().sequenceId;
 }
 
 
@@ -195,7 +263,6 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     }
     vcu_->update(dt, other_robot_positions);
 
-
     const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
     const NodeInfo* target_node = nullptr;
 
@@ -206,9 +273,6 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
 
     double dx = target_node->x - cur_x;
     double dy = target_node->y - cur_y;
-    // double dtheta = target_node->theta - cur_theta;
-    // while (dtheta > PI) dtheta -= 2.0 * PI;
-    // while (dtheta < -PI) dtheta += 2.0 * PI;
 
     //현재위치와 목표위치 차이 계산
     double dist = std::hypot(dx, dy);
@@ -234,6 +298,13 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     // std::cout<< "dist: " << dist << " " << reach_distance_radius<<std::endl;
     if (dist < reach_distance_radius)
     {
+        completed_edges_.push_back(cur_edge);
+        
+        if (target_node)
+        {
+            completed_nodes_.push_back(*target_node);
+        }        
+
         cur_edge_idx_++;
         is_angle_adjusting_ = false;
 
@@ -246,9 +317,10 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
             
             return;
         }
+
         const EdgeInfo& next_edge = edges_[cur_edge_idx_];
 
-        std::cout<< "idx: " << cur_edge_idx_ << "edge " << edges_[cur_edge_idx_].edgeId <<std::endl;
+        // std::cout<< "idx: " << cur_edge_idx_ << "edge " << edges_[cur_edge_idx_].edgeId <<std::endl;
         setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
     }
 }
