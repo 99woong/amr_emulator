@@ -1,4 +1,4 @@
-// vda5050_protocol.cpp 2025.11.04, VDA5050 2.1 Schema validation
+// vda5050_protocol.cpp - VDA5050 2.1 Schema validation
 
 #include "vda5050_protocol.h"
 #include "node_edge_info.h"
@@ -18,13 +18,20 @@ void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_p
     }
 }
 
-Vda5050Protocol::Vda5050Protocol(const AmrConfig& config) : running_(false), config_(config) 
+Vda5050Protocol::Vda5050Protocol(const AmrConfig& config) 
+    : running_(false), 
+      config_(config),
+      amr_(nullptr),
+      state_header_id_(0),
+      factsheet_header_id_(0),
+      connection_header_id_(0),
+      current_order_id_(""),
+      current_order_update_id_(0),
+      current_zone_set_id_(""),
+      order_active_(false)
 {
-    // 초기 orderId, orderUpdateId 설정
-    current_order_id_ = "";
-    current_order_update_id_ = 0;
+    std::cout << "[Vda5050Protocol] Initialized" << std::endl;
 }
-
 
 Vda5050Protocol::~Vda5050Protocol() 
 {
@@ -34,68 +41,80 @@ Vda5050Protocol::~Vda5050Protocol()
 void Vda5050Protocol::setAmr(IAmr* amr) 
 {
     amr_ = amr;
+    std::cout << "[Vda5050Protocol] AMR instance set" << std::endl;
 }
 
 void Vda5050Protocol::setAgvId(const std::string& agv_id) 
 {
     agv_id_ = agv_id;
+    std::cout << "[Vda5050Protocol] AGV ID set to: " << agv_id_ << std::endl;
 }
-
-// std::string Vda5050Protocol::getProtocolType() const
-// {
-//     return "VDA5050";
-// }
 
 void Vda5050Protocol::useDefaultConfig(const std::string& server_address) 
 {
-    std::cout << "mqtt_server_address: " << server_address << std::endl;
+    std::cout << "[Vda5050Protocol] Configuring MQTT server: " << server_address << std::endl;
     mqtt_server_uri_ = server_address;
     conn_opts_.set_clean_session(true);
     mqtt_client_ = std::make_unique<mqtt::async_client>(mqtt_server_uri_, agv_id_ + "_client");
     mqtt_callback_ = std::make_shared<Vda5050MqttCallback>(this);
     mqtt_client_->set_callback(*mqtt_callback_);
 
+    // VDA5050 topic structure: agv/v2/{manufacturer}/{agv_id}/{topic}
     state_topic_ = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/state";
     order_topic_ = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/order";
     instant_actions_topic = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/instantActions";
     visualization_topic_ = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/visualization";
     connection_topic_ = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/connection";
     factsheet_topic_ = "agv/v2/ZENIXROBOTICS/" + agv_id_ + "/factsheet";
+    
+    std::cout << "[Vda5050Protocol] Topics configured:" << std::endl;
+    std::cout << "  - State: " << state_topic_ << std::endl;
+    std::cout << "  - Order: " << order_topic_ << std::endl;
+    std::cout << "  - Instant Actions: " << instant_actions_topic << std::endl;
 }
 
 void Vda5050Protocol::start() 
 {
     try 
     {
+        std::cout << "[Vda5050Protocol] Connecting to MQTT broker..." << std::endl;
         mqtt_client_->connect(conn_opts_)->wait();
 
+        // Publish connection message
         std::string connect_msg = makeConnectMessage();
         auto pubmsg = mqtt::make_message(connection_topic_, connect_msg);
         pubmsg->set_qos(1);
         pubmsg->set_retained(false);
-
         mqtt_client_->publish(pubmsg);
+        
+        // Subscribe to order and instant actions topics
         mqtt_client_->subscribe(order_topic_, 1)->wait();
         mqtt_client_->subscribe(instant_actions_topic, 1)->wait();
+        
         running_ = true;
-        std::cout << "[Vda5050Protocol] MQTT connected & subscribed to: " << order_topic_ << " and " << instant_actions_topic << std::endl;
+        std::cout << "[Vda5050Protocol] MQTT connected & subscribed to: " 
+                  << order_topic_ << " and " << instant_actions_topic << std::endl;
 
+        // Start background thread (for periodic tasks if needed)
         publish_thread_ = std::thread([this]()
         {
             while (running_)
             {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
+                // Periodic tasks can be added here
             }
         });        
     } 
     catch (const mqtt::exception& e) 
     {
         std::cerr << "[Vda5050Protocol] MQTT connection failed: " << e.what() << std::endl;
+        throw;
     }
 }
 
 void Vda5050Protocol::stop() 
 {
+    std::cout << "[Vda5050Protocol] Stopping protocol..." << std::endl;
     running_ = false;
     
     if (publish_thread_.joinable())
@@ -109,10 +128,11 @@ void Vda5050Protocol::stop()
         {
             mqtt_client_->unsubscribe(order_topic_)->wait();
             mqtt_client_->disconnect()->wait();
+            std::cout << "[Vda5050Protocol] MQTT disconnected" << std::endl;
         } 
-        catch (...) 
+        catch (const std::exception& e) 
         {
-            // Ignore errors during cleanup
+            std::cerr << "[Vda5050Protocol] Error during disconnect: " << e.what() << std::endl;
         }
     }    
 }
@@ -142,7 +162,7 @@ std::string Vda5050Protocol::makeConnectMessage()
 {
     nlohmann::json conn_json;
 
-    // Required fields
+    // Required fields per VDA5050 2.1 connection schema
     conn_json["headerId"] = connection_header_id_++;
     conn_json["timestamp"] = getCurrentTimestampISO8601();
     conn_json["version"] = "2.1.0";
@@ -150,14 +170,13 @@ std::string Vda5050Protocol::makeConnectMessage()
     conn_json["serialNumber"] = agv_id_;
     conn_json["connectionState"] = detectConnection();
 
-    std::cout << "make connect message : " << conn_json.dump() << std::endl;
-
+    std::cout << "[Vda5050Protocol] Connection message: " << conn_json.dump() << std::endl;
     return conn_json.dump();
 }
 
 std::string Vda5050Protocol::detectConnection()
 {
-    // Todo 실제 연결 상태 감지 로직
+    // TODO: Implement actual connection state detection
     return "ONLINE";
 }
 
@@ -290,12 +309,10 @@ std::string Vda5050Protocol::makeFactsheetMessage()
     loadSpec["loadSets"] = loadSets;
     factsheet_json["loadSpecification"] = loadSpec;
 
-    // std::cout << "publish factsheet : " << factsheet_json.dump() << std::endl;
-
     return factsheet_json.dump();
 }
 
-// INSTANT ACTIONS
+// INSTANT ACTIONS HANDLER
 void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_json)
 {
     try
@@ -304,9 +321,12 @@ void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_j
         std::string actionId = instant_action_json.at("actionId").get<std::string>();
         std::string blockingType = instant_action_json.at("blockingType").get<std::string>();        
 
+        std::cout << "[Vda5050Protocol] Processing instant action: " << actionType 
+                  << " (ID: " << actionId << ")" << std::endl;
+
         if (actionType == "factsheetRequest")
         {
-            // Factsheet 메시지 생성 (VDA5050 2.1 스키마 준수)
+            // Generate and publish factsheet message
             std::string factsheet_msg = makeFactsheetMessage();
             auto msg = mqtt::make_message(factsheet_topic_, factsheet_msg);
             msg->set_qos(1);
@@ -314,27 +334,47 @@ void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_j
             if (mqtt_client_ && mqtt_client_->is_connected())
             {
                 mqtt_client_->publish(msg);
-                std::cout << "[Vda5050Protocol] Factsheet published in response to request: " << actionId << std::endl;
+                std::cout << "[Vda5050Protocol] Factsheet published in response to request: " 
+                          << actionId << std::endl;
             }
             else
             {
-                std::cerr << "[Vda5050Protocol] Cannot publish factsheet: MQTT client disconnected\n";
+                std::cerr << "[Vda5050Protocol] Cannot publish factsheet: MQTT client disconnected" << std::endl;
             }
         }
         else if (actionType == "cancelOrder")
         {
             std::cout << "[Vda5050Protocol] Cancel order requested. ActionId: " << actionId << std::endl;
-            // ... (실제 취소 로직 호출) ...
+            
+            // Cancel order and reset to IDLE state
+            current_order_id_ = "";
+            current_order_update_id_ = 0;
+            current_zone_set_id_ = "";
+            order_active_ = false;
+            
+            // Clear order data
+            received_nodes_.clear();
+            received_edges_.clear();
+            
+            // Send cancel command to AMR
+            if (amr_)
+            {
+                amr_->cancelOrder();
+            }
+            
+            // Publish state immediately (with empty nodeStates and edgeStates)
+            publishStateMessage(amr_);
+            std::cout << "[Vda5050Protocol] Order cancelled, switched to IDLE state" << std::endl;
         }
         else
         {
-            std::cout << "[Vda5050Protocol] Unknown instant action: " << actionType << ". ActionId: " << actionId << std::endl;
+            std::cout << "[Vda5050Protocol] Unknown instant action: " << actionType 
+                      << ". ActionId: " << actionId << std::endl;
         }
     }
     catch (const nlohmann::json::exception& e)
     {
-        std::cerr << "[Vda5050Protocol] Instant Action Schema/Parsing Error (Check actionType, actionId, blockingType): " << e.what() << std::endl;
-        // FMS로 에러 보고 로직 추가 필요
+        std::cerr << "[Vda5050Protocol] Instant Action Schema/Parsing Error: " << e.what() << std::endl;
     }
     catch (const std::exception& e)
     {
@@ -342,29 +382,30 @@ void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_j
     }    
 }
 
+// MESSAGE HANDLER (from FMS)
 void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 {
     std::cout << "[Vda5050Protocol] handleMessage called" << std::endl;
 
     if (msg.empty() || !amr) 
     {
-        std::cerr << "[Vda5050Protocol] Empty message or null AMR pointer\n";
+        std::cerr << "[Vda5050Protocol] Empty message or null AMR pointer" << std::endl;
         return;
     }
 
     try 
     {
-        std::cout << "handleMessage : " << msg << std::endl;
+        std::cout << "[Vda5050Protocol] Received message: " << msg << std::endl;
 
         auto json_msg = nlohmann::json::parse(msg);
 
-        // InstantActions 메시지 처리
+        // Check if this is an InstantActions message
         if (json_msg.contains("actions") && json_msg["actions"].is_array())
         {
-
-            std::cout << "InstantActions received. Processing " << json_msg["actions"].size() << " action(s)." << std::endl;      
+            std::cout << "[Vda5050Protocol] InstantActions received. Processing " 
+                      << json_msg["actions"].size() << " action(s)." << std::endl;      
                 
-            // 모든 액션 순회 처리
+            // Process all actions
             for (const auto& action : json_msg["actions"])
             {
                 handleInstantAction(action);
@@ -372,13 +413,14 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
 
-        // Order 메시지 처리
+        // Check if this is an Order message
         if (!json_msg.contains("nodes") || !json_msg.contains("edges")) 
         {
-            std::cerr << "[Vda5050Protocol] Order missing nodes or edges\n";
+            std::cerr << "[Vda5050Protocol] Order missing required nodes or edges fields" << std::endl;
             return;
         }
 
+        // Extract order information
         if (json_msg.contains("orderId"))
         {
             current_order_id_ = json_msg["orderId"].get<std::string>();
@@ -396,26 +438,59 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             current_zone_set_id_ = "";
         }
 
+        std::cout << "[Vda5050Protocol] Processing order: " << current_order_id_ 
+                  << " (updateId: " << current_order_update_id_ << ")" << std::endl;
+
+        // Set order as active
+        order_active_ = true;
+
+        // Clear and store received nodes and edges
+        received_nodes_.clear();
+        received_edges_.clear();
+
         std::unordered_map<std::string, NodeInfo> node_map;
         std::vector<NodeInfo> ordered_nodes;
 
+        // Parse nodes
         for (const auto& node : json_msg["nodes"])
         {
             NodeInfo n;
             n.nodeId = node.value("nodeId", "");
             n.sequenceId = node.value("sequenceId", 0);
-            n.released = node.value("released", false);
+            n.released = node.value("released", false);  // Store original released value
             
             if (node.contains("nodePosition") && !node["nodePosition"].is_null())
             {
                 n.x = node["nodePosition"].value("x", 0.0);
                 n.y = node["nodePosition"].value("y", 0.0);
+                n.hasNodePosition = true;
+                n.nodePosition.x = n.x;
+                n.nodePosition.y = n.y;
+                n.nodePosition.mapId = node["nodePosition"].value("mapId", "default_map");
+                n.nodePosition.theta = node["nodePosition"].value("theta", 0.0);
+                n.nodePosition.positionInitialized = true;
+            }
+            
+            // Parse actions attached to this node
+            if (node.contains("actions") && node["actions"].is_array())
+            {
+                for (const auto& action_json : node["actions"])
+                {
+                    ActionInfo action;
+                    action.actionId = action_json.value("actionId", "");
+                    action.actionType = action_json.value("actionType", "");
+                    action.description = action_json.value("actionDescription", "");
+                    action.status = "WAITING";
+                    n.actions.push_back(action);
+                }
             }
             
             node_map[n.nodeId] = n;
             ordered_nodes.push_back(n);
+            received_nodes_.push_back(n);  // Store for state reporting
         }
 
+        // Parse edges
         std::vector<EdgeInfo> edges;
         for (const auto& edge : json_msg["edges"])
         {
@@ -424,7 +499,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             e.sequenceId = edge.value("sequenceId", 0);
             e.startNodeId = edge.value("startNodeId", "");
             e.endNodeId = edge.value("endNodeId", "");
-            e.released = edge.value("released", false);
+            e.released = edge.value("released", false);  // Store original released value
             e.centerNodeId = edge.value("centerNodeId", "");            
             
             if (edge.contains("maxSpeed") && !edge["maxSpeed"].is_null())
@@ -432,31 +507,76 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
                 e.maxSpeed = edge["maxSpeed"].get<double>();
             }
             
-            if (edge.contains("centerNodeId"))
+            if (!e.centerNodeId.empty())
             {
                 e.has_turn_center = true;
-            }            
+            }
+            
+            // Parse actions attached to this edge
+            if (edge.contains("actions") && edge["actions"].is_array())
+            {
+                for (const auto& action_json : edge["actions"])
+                {
+                    ActionInfo action;
+                    action.actionId = action_json.value("actionId", "");
+                    action.actionType = action_json.value("actionType", "");
+                    action.description = action_json.value("actionDescription", "");
+                    action.status = "WAITING";
+                    e.actions.push_back(action);
+                }
+            }
+            
+            // Parse trajectory if present
+            if (edge.contains("trajectory") && !edge["trajectory"].is_null())
+            {
+                e.hasTrajectory = true;
+                e.trajectory.degree = edge["trajectory"].value("degree", 3);
+                e.trajectory.knotVector = edge["trajectory"].value("knotVector", std::vector<double>());
+                
+                if (edge["trajectory"].contains("controlPoints") && edge["trajectory"]["controlPoints"].is_array())
+                {
+                    for (const auto& cp_json : edge["trajectory"]["controlPoints"])
+                    {
+                        ControlPoint cp;
+                        cp.x = cp_json.value("x", 0.0);
+                        cp.y = cp_json.value("y", 0.0);
+                        if (cp_json.contains("weight") && !cp_json["weight"].is_null())
+                        {
+                            cp.weight = cp_json["weight"].get<double>();
+                            cp.hasWeight = true;
+                        }
+                        e.trajectory.controlPoints.push_back(cp);
+                    }
+                }
+            }
             
             edges.push_back(e);
+            received_edges_.push_back(e);  // Store for state reporting
         }
 
+        // Sort edges by sequence ID
         std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
         {
             return a.sequenceId < b.sequenceId;
         });
 
+        // Send order to AMR for execution
         amr->setOrder(ordered_nodes, edges, 15.0);
 
-        std::cout << "[Vda5050Protocol] Order processed: " << ordered_nodes.size()
-                  << " nodes, " << edges.size() << " edges\n";
+        std::cout << "[Vda5050Protocol] Order sent to AMR: " << ordered_nodes.size()
+                  << " nodes, " << edges.size() << " edges" << std::endl;
+        
+        // Publish state immediately after receiving order (Requirement 7)
+        publishStateMessage(amr);
+        std::cout << "[Vda5050Protocol] State published immediately after order reception" << std::endl;
     } 
     catch (const nlohmann::json::exception& e)
     {
-        std::cerr << "[Vda5050Protocol] JSON Parsing Error: " << e.what() << "\n";
+        std::cerr << "[Vda5050Protocol] JSON Parsing Error: " << e.what() << std::endl;
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Vda5050Protocol] Unknown Error in handleMessage: " << e.what() << "\n";
+        std::cerr << "[Vda5050Protocol] Unknown Error in handleMessage: " << e.what() << std::endl;
     }
 }
 
@@ -522,23 +642,24 @@ std::string Vda5050Protocol::makeVisualizationMessage(IAmr* amr)
     return viz_json.dump();
 }
 
-// STATE MESSAGE
+// STATE MESSAGE PUBLISHING
 void Vda5050Protocol::publishStateMessage(IAmr* amr) 
 {
     if (!amr_ || !mqtt_client_ || !mqtt_client_->is_connected()) 
     {
+        std::cerr << "[Vda5050Protocol] Cannot publish state: AMR or MQTT not available" << std::endl;
         return;
     }
 
     try 
     {
         std::string state_msg = makeStateMessage(amr);
-        // std::cout << "msg : " << state_msg << std::endl;
         if (!state_msg.empty()) 
         {
             auto msg = mqtt::make_message(state_topic_, state_msg);
             msg->set_qos(1);
             mqtt_client_->publish(msg);
+            std::cout << "[Vda5050Protocol] State message published successfully" << std::endl;
         }
     } 
     catch (const std::exception& e) 
@@ -547,13 +668,12 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
     }
 }
 
-
-// vda5050_protocol.cpp - makeStateMessage 함수 수정
-
+// STATE MESSAGE CREATION (VDA5050 2.1 compliant)
 std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
 {
     if (!amr) 
     {
+        std::cerr << "[Vda5050Protocol] Cannot create state message: AMR is null" << std::endl;
         return {};
     }
     
@@ -592,118 +712,129 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     // 5. Required Operating Mode
     state_json["operatingMode"] = "AUTOMATIC";
     
-    // 6. Required Node States Array - 실시간 업데이트
+    // 6. Node States Array (Requirements 1, 2, 3, 4, 5, 6)
     nlohmann::json node_states = nlohmann::json::array();
     
-    // AMR의 현재 주행 정보 가져오기
-    auto current_nodes = amr->getCurrentNodes();  // AMR에서 현재 처리 중인 노드들
-    auto completed_nodes = amr->getCompletedNodes();  // 완료된 노드들
-    
-    // 완료된 노드들 추가
-    for (const auto& node : completed_nodes)
+    // IDLE state: No order or order completed (Requirements 1, 2)
+    if (!order_active_ || (current_order_id_.empty() && received_nodes_.empty()))
     {
-        nlohmann::json node_state = {
-            {"nodeId", node.nodeId},
-            {"sequenceId", node.sequenceId},
-            {"released", true}
-        };
-        
-        if (node.hasNodePosition)
-        {
-            node_state["nodePosition"] = {
-                {"x", node.nodePosition.x},
-                {"y", node.nodePosition.y},
-                {"mapId", node.nodePosition.mapId},
-                {"theta", node.nodePosition.theta},
-                {"positionInitialized", true}
-            };
-        }
-        
-        node_states.push_back(node_state);
+        // nodeStates must be empty array in IDLE state
+        std::cout << "[Vda5050Protocol] IDLE state - empty nodeStates" << std::endl;
     }
-    
-    // 현재 처리 중인 노드들 추가
-    for (const auto& node : current_nodes)
+    else
     {
-        nlohmann::json node_state = {
-            {"nodeId", node.nodeId},
-            {"sequenceId", node.sequenceId},
-            {"released", node.released}
-        };
+        // Order execution in progress (Requirements 3, 4, 5, 6)
+        auto completed_nodes = amr->getCompletedNodes();
+        std::set<std::string> completed_node_ids;
         
-        if (node.hasNodePosition)
+        // Build set of completed node IDs
+        for (const auto& node : completed_nodes)
         {
-            node_state["nodePosition"] = {
-                {"x", node.nodePosition.x},
-                {"y", node.nodePosition.y},
-                {"mapId", node.nodePosition.mapId},
-                {"theta", node.nodePosition.theta},
-                {"positionInitialized", true}
-            };
+            completed_node_ids.insert(node.nodeId);
         }
         
-        node_states.push_back(node_state);
+        // Include all nodes from FMS order (Requirement 4)
+        // Exclude completed nodes (Requirement 5)
+        for (const auto& node : received_nodes_)
+        {
+            // Skip completed nodes
+            if (completed_node_ids.find(node.nodeId) != completed_node_ids.end())
+            {
+                continue;
+            }
+            
+            nlohmann::json node_state = {
+                {"nodeId", node.nodeId},
+                {"sequenceId", node.sequenceId},
+                {"released", node.released}  // Use original release value from order (Requirement 6)
+            };
+            
+            if (node.hasNodePosition)
+            {
+                node_state["nodePosition"] = {
+                    {"x", node.nodePosition.x},
+                    {"y", node.nodePosition.y},
+                    {"mapId", node.nodePosition.mapId},
+                    {"theta", node.nodePosition.theta},
+                    {"positionInitialized", node.nodePosition.positionInitialized}
+                };
+            }
+            
+            node_states.push_back(node_state);
+        }
     }
     
     state_json["nodeStates"] = node_states;
     
-    // 7. Required Edge States Array - 실시간 업데이트
+    // 7. Edge States Array (Requirements 1, 2, 3, 4, 5, 6)
     nlohmann::json edge_states = nlohmann::json::array();
     
-    auto current_edges = amr->getCurrentEdges();  // 현재 주행 중인 엣지들
-    auto completed_edges = amr->getCompletedEdges();  // 완료된 엣지들
-    
-    // 완료된 엣지들 추가
-    for (const auto& edge : completed_edges)
+    // IDLE state: No order or order completed (Requirements 1, 2)
+    if (!order_active_ || (current_order_id_.empty() && received_edges_.empty()))
     {
-        nlohmann::json edge_state = {
-            {"edgeId", edge.edgeId},
-            {"sequenceId", edge.sequenceId},
-            {"released", true}
-        };
-        edge_states.push_back(edge_state);
+        // edgeStates must be empty array in IDLE state
+        std::cout << "[Vda5050Protocol] IDLE state - empty edgeStates" << std::endl;
     }
-    
-    // 현재 주행 중인 엣지들 추가
-    for (const auto& edge : current_edges)
+    else
     {
-        nlohmann::json edge_state = {
-            {"edgeId", edge.edgeId},
-            {"sequenceId", edge.sequenceId},
-            {"released", edge.released}
-        };
+        // Order execution in progress (Requirements 3, 4, 5, 6)
+        auto completed_edges = amr->getCompletedEdges();
+        std::set<std::string> completed_edge_ids;
         
-        // Trajectory 정보가 있으면 포함
-        if (edge.hasTrajectory)
+        // Build set of completed edge IDs
+        for (const auto& edge : completed_edges)
         {
-            nlohmann::json trajectory = {
-                {"degree", edge.trajectory.degree},
-                {"knotVector", edge.trajectory.knotVector}
-            };
-            
-            nlohmann::json control_points = nlohmann::json::array();
-            for (const auto& cp : edge.trajectory.controlPoints)
-            {
-                nlohmann::json point = {
-                    {"x", cp.x},
-                    {"y", cp.y}
-                };
-                if (cp.hasWeight)
-                {
-                    point["weight"] = cp.weight;
-                }
-                control_points.push_back(point);
-            }
-            trajectory["controlPoints"] = control_points;
-            edge_state["trajectory"] = trajectory;
+            completed_edge_ids.insert(edge.edgeId);
         }
         
-        edge_states.push_back(edge_state);
+        // Include all edges from FMS order (Requirement 4)
+        // Exclude completed edges (Requirement 5)
+        for (const auto& edge : received_edges_)
+        {
+            // Skip completed edges
+            if (completed_edge_ids.find(edge.edgeId) != completed_edge_ids.end())
+            {
+                continue;
+            }
+            
+            nlohmann::json edge_state = {
+                {"edgeId", edge.edgeId},
+                {"sequenceId", edge.sequenceId},
+                {"released", edge.released}  // Use original release value from order (Requirement 6)
+            };
+            
+            // Include trajectory information if present
+            if (edge.hasTrajectory)
+            {
+                nlohmann::json trajectory = {
+                    {"degree", edge.trajectory.degree},
+                    {"knotVector", edge.trajectory.knotVector}
+                };
+                
+                nlohmann::json control_points = nlohmann::json::array();
+                for (const auto& cp : edge.trajectory.controlPoints)
+                {
+                    nlohmann::json point = {
+                        {"x", cp.x},
+                        {"y", cp.y}
+                    };
+                    if (cp.hasWeight)
+                    {
+                        point["weight"] = cp.weight;
+                    }
+                    control_points.push_back(point);
+                }
+                trajectory["controlPoints"] = control_points;
+                edge_state["trajectory"] = trajectory;
+            }
+            
+            edge_states.push_back(edge_state);
+        }
     }
     
     state_json["edgeStates"] = edge_states;
     
-    // 8. AGV Position
+    // 8. AGV Position (Required)
     double x = 0.0, y = 0.0, theta = 0.0;
     amr->getVcu()->getEstimatedPose(x, y, theta);
     
@@ -714,19 +845,21 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
         {"mapId", "default_map"},
         {"positionInitialized", true}
     };
+    state_json["agvPosition"]["mapDescription"] = nullptr;
     state_json["agvPosition"]["localizationScore"] = 0.95;
+    state_json["agvPosition"]["deviationRange"] = nullptr;
     
-    // 9. Velocity
+    // 9. Velocity (Required)
     state_json["velocity"] = {
         {"vx", amr->getVcu()->getMotor().getLinearVelocity()},
         {"vy", 0.0},
         {"omega", amr->getVcu()->getMotor().getAngularVelocity()}
     };
     
-    // 10. Loads (nullable array)
+    // 10. Loads (Required, nullable array)
     state_json["loads"] = nlohmann::json::array();
     
-    // 11. Required Action States Array
+    // 11. Action States Array (Required)
     nlohmann::json action_states = nlohmann::json::array();
     
     auto current_actions = getCurrentActions(amr);
@@ -736,50 +869,70 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
             {"actionId", action.actionId},
             {"actionStatus", action.status}
         };
+        
+        // Optional fields
+        if (!action.actionType.empty())
+        {
+            action_state["actionType"] = action.actionType;
+        }
+        if (!action.description.empty())
+        {
+            action_state["actionDescription"] = action.description;
+        }
+        if (!action.resultDescription.empty())
+        {
+            action_state["resultDescription"] = action.resultDescription;
+        }
+        
         action_states.push_back(action_state);
     }
     
     state_json["actionStates"] = action_states;
     
-    // 12. Required Battery State
+    // 12. Battery State (Required)
     state_json["batteryState"] = {
         {"batteryCharge", amr->getBatteryPercent()},
         {"charging", isCharging(amr)}
     };
     
-    state_json["batteryState"]["batteryVoltage"] = 0.0;
-    state_json["batteryState"]["batteryHealth"] = 100.0;
-    state_json["batteryState"]["reach"] = 0.0;
+    // Optional battery fields
+    state_json["batteryState"]["batteryVoltage"] = nullptr;
+    state_json["batteryState"]["batteryHealth"] = nullptr;
+    state_json["batteryState"]["reach"] = nullptr;
     
-    // 13. Required Errors Array
+    // 13. Errors Array (Required)
     nlohmann::json errors = nlohmann::json::array();
     
+    // Check for low battery
     if (amr->getBatteryPercent() < 20.0) 
     {
         nlohmann::json battery_error = {
             {"errorType", "BATTERY_LOW"},
-            {"errorLevel", "WARNING"}
+            {"errorLevel", "WARNING"},
+            {"errorDescription", "Battery level is below 20%"}
         };
-        battery_error["errorDescription"] = "Battery level is below 20%";
+        battery_error["errorReferences"] = nlohmann::json::array();
         errors.push_back(battery_error);
     }
     
+    // Check for system errors
     if (amr_state.find("ERROR") != std::string::npos) 
     {
         nlohmann::json system_error = {
             {"errorType", "SYSTEM_ERROR"},
-            {"errorLevel", "FATAL"}
+            {"errorLevel", "FATAL"},
+            {"errorDescription", amr_state}
         };
-        system_error["errorDescription"] = amr_state;
+        system_error["errorReferences"] = nlohmann::json::array();
         errors.push_back(system_error);
     }
     
     state_json["errors"] = errors;
     
-    // 14. Information Array
+    // 14. Information Array (Required)
     state_json["information"] = nlohmann::json::array();
     
-    // 15. Required Safety State
+    // 15. Safety State (Required)
     std::string estop_status = getEmergencyStopStatus(amr) ? "MANUAL" : "NONE";
     state_json["safetyState"] = {
         {"eStop", estop_status},
@@ -789,7 +942,30 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     return state_json.dump();
 }
 
-// Helper Methods
+// ORDER COMPLETION CHECK
+void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
+{
+    if (!order_active_ || !amr)
+        return;
+    
+    // Check if all nodes and edges are completed
+    auto completed_nodes = amr->getCompletedNodes();
+    auto completed_edges = amr->getCompletedEdges();
+    
+    bool all_nodes_completed = (completed_nodes.size() == received_nodes_.size());
+    bool all_edges_completed = (completed_edges.size() == received_edges_.size());
+    
+    if (all_nodes_completed && all_edges_completed && !received_nodes_.empty())
+    {
+        std::cout << "[Vda5050Protocol] Order completed - switching to IDLE state" << std::endl;
+        order_active_ = false;
+        
+        // Publish state with empty nodeStates and edgeStates
+        publishStateMessage(amr);
+    }
+}
+
+// HELPER METHODS
 std::string Vda5050Protocol::getCurrentNodeId(IAmr* amr)
 {
     auto current_nodes = amr->getCurrentNodes();
@@ -824,43 +1000,72 @@ std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)
 {
     std::vector<ActionInfo> actions;
     
-    if (isCharging(amr)) 
+    if (!order_active_)
     {
-        ActionInfo charging_action;
-        charging_action.actionId = "charge_001";
-        charging_action.actionType = "charge";
-        charging_action.description = "Battery charging";
-        charging_action.status = "RUNNING";
-        charging_action.resultDescription = "Charging in progress";
-        actions.push_back(charging_action);
+        // In IDLE state, only report charging action if applicable
+        if (isCharging(amr)) 
+        {
+            ActionInfo charging_action;
+            charging_action.actionId = "charge_001";
+            charging_action.actionType = "charge";
+            charging_action.description = "Battery charging";
+            charging_action.status = "RUNNING";
+            charging_action.resultDescription = "Charging in progress";
+            actions.push_back(charging_action);
+        }
+        return actions;
     }
     
-    // 현재 노드/엣지의 액션들도 포함 가능
-    auto current_nodes = amr->getCurrentNodes();
-    for (const auto& node : current_nodes)
+    // During order execution: report actions from uncompleted nodes/edges
+    auto completed_nodes = amr->getCompletedNodes();
+    std::set<std::string> completed_node_ids;
+    for (const auto& node : completed_nodes)
     {
-        for (const auto& action : node.actions)
+        completed_node_ids.insert(node.nodeId);
+    }
+    
+    // Actions from uncompleted nodes
+    for (const auto& node : received_nodes_)
+    {
+        if (completed_node_ids.find(node.nodeId) == completed_node_ids.end())
         {
-            ActionInfo action_info;
-            action_info.actionId = action.actionId;
-            action_info.actionType = action.actionType;
-            action_info.description = action.actionDescription;
-            action_info.status = "RUNNING";  // 또는 실제 상태
-            actions.push_back(action_info);
+            for (const auto& action : node.actions)
+            {
+                ActionInfo action_info;
+                action_info.actionId = action.actionId;
+                action_info.actionType = action.actionType;
+                action_info.description = action.actionDescription;
+                
+                // TODO: Get actual action status from AMR
+                action_info.status = "RUNNING";  
+                actions.push_back(action_info);
+            }
         }
     }
     
-    auto current_edges = amr->getCurrentEdges();
-    for (const auto& edge : current_edges)
+    auto completed_edges = amr->getCompletedEdges();
+    std::set<std::string> completed_edge_ids;
+    for (const auto& edge : completed_edges)
     {
-        for (const auto& action : edge.actions)
+        completed_edge_ids.insert(edge.edgeId);
+    }
+    
+    // Actions from uncompleted edges
+    for (const auto& edge : received_edges_)
+    {
+        if (completed_edge_ids.find(edge.edgeId) == completed_edge_ids.end())
         {
-            ActionInfo action_info;
-            action_info.actionId = action.actionId;
-            action_info.actionType = action.actionType;
-            action_info.description = action.actionDescription;
-            action_info.status = "RUNNING";  // 또는 실제 상태
-            actions.push_back(action_info);
+            for (const auto& action : edge.actions)
+            {
+                ActionInfo action_info;
+                action_info.actionId = action.actionId;
+                action_info.actionType = action.actionType;
+                action_info.description = action.actionDescription;
+                
+                // TODO: Get actual action status from AMR
+                action_info.status = "RUNNING";
+                actions.push_back(action_info);
+            }
         }
     }
     
@@ -871,7 +1076,7 @@ std::vector<ErrorInfo> Vda5050Protocol::getSystemErrors(IAmr* amr)
 {
     std::vector<ErrorInfo> errors;
     
-    // 배터리 경고
+    // Battery warning
     if (amr->getBatteryPercent() < 20.0)
     {
         ErrorInfo error;
@@ -881,7 +1086,7 @@ std::vector<ErrorInfo> Vda5050Protocol::getSystemErrors(IAmr* amr)
         errors.push_back(error);
     }
     
-    // AMR 상태 기반 에러
+    // System errors based on AMR state
     std::string state = amr->getState();
     if (state.find("ERROR") != std::string::npos)
     {
@@ -897,13 +1102,13 @@ std::vector<ErrorInfo> Vda5050Protocol::getSystemErrors(IAmr* amr)
 
 bool Vda5050Protocol::getEmergencyStopStatus(IAmr* amr)
 {
-    // TODO: 실제 E-Stop 상태 확인 로직 구현
+    // TODO: Implement actual E-Stop status check
     return false;
 }
 
 bool Vda5050Protocol::getFieldViolationStatus(IAmr* amr)
 {
-    // TODO: 안전영역 침범확인 로직 구현
+    // TODO: Implement actual safety zone violation check
     return false;
 }
 
@@ -922,7 +1127,6 @@ int Vda5050Protocol::getLastNodeSequenceId(IAmr* amr)
 {
     return amr->getLastNodeSequenceId();
 }
-
 
 nlohmann::json Vda5050Protocol::getCurrentNodePosition(IAmr* amr)
 {
@@ -951,17 +1155,19 @@ double Vda5050Protocol::getDistanceSinceLastNode(IAmr* amr)
         return 0.0;
     
     const auto& last_node = completed_nodes.back();
+    double dx, dy;
+    
     if (!last_node.hasNodePosition)
     {
-        // nodePosition이 없으면 x, y 사용
-        double dx = current_x - last_node.x;
-        double dy = current_y - last_node.y;
-        return std::hypot(dx, dy);
+        // Use x, y if nodePosition is not available
+        dx = current_x - last_node.x;
+        dy = current_y - last_node.y;
     }
-    
-    double dx = current_x - last_node.nodePosition.x;
-    double dy = current_y - last_node.nodePosition.y;
+    else
+    {
+        dx = current_x - last_node.nodePosition.x;
+        dy = current_y - last_node.nodePosition.y;
+    }
     
     return std::hypot(dx, dy);
 }
-

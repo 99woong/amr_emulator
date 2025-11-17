@@ -1,11 +1,12 @@
-// 2025.11.04, VDA5050 2.1 Schema validation
-
+// vda5050_protocol.h - VDA5050 2.1 Schema compliant
 #ifndef VDA5050_PROTOCOL_H
 #define VDA5050_PROTOCOL_H
 
 #include <string>
 #include <memory>
 #include <thread>
+#include <vector>
+#include <set>
 #include <mqtt/async_client.h>
 #include <nlohmann/json.hpp>
 #include "iprotocol.h"
@@ -17,58 +18,74 @@ struct AmrConfig;
 struct NodeInfo;
 struct EdgeInfo;
 
-// Action info
+// Action info structure
 struct ActionInfo 
 {
     std::string actionId;
     std::string actionType;
     std::string description;
-    std::string status;
+    std::string status;  // WAITING, INITIALIZING, RUNNING, PAUSED, FINISHED, FAILED
     std::string resultDescription;
     nlohmann::json actionParameters;
 };
 
-// Error info 
+// Error info structure
 struct ErrorInfo 
 {
     std::string errorType;
-    std::string errorLevel;
+    std::string errorLevel;  // WARNING, FATAL
     std::string description;
     std::string hint;
+    std::vector<std::string> errorReferences;
 };
 
 class Vda5050Protocol : public IProtocol 
 {
 public:
-    Vda5050Protocol(const AmrConfig& config);
-    ~Vda5050Protocol();
+    explicit Vda5050Protocol(const AmrConfig& config);
+    virtual ~Vda5050Protocol();
 
-    void setAmr(IAmr* amr);
-    void setAgvId(const std::string& agv_id);
-    void useDefaultConfig(const std::string& server_address);
+    // IProtocol interface implementation
+    void setAmr(IAmr* amr) override;
+    void setAgvId(const std::string& agv_id) override;
+    void useDefaultConfig(const std::string& server_address) override;
     void start() override;
-    void stop();
+    void stop() override;
+    
+    // Message publishing (outbound to FMS)
     void publishStateMessage(IAmr* amr) override;
     void publishVisualizationMessage(IAmr* amr) override;
-    std::string getProtocolType() const override { return "vda5050"; }
+    
+    // Message handling (inbound from FMS)
+    void handleMessage(const std::string& msg, IAmr* amr) override;
+    
+    // Message creation (for testing/debugging)
+    std::string makeStateMessage(IAmr* amr) override;
+    
+    // Protocol type
+    std::string getProtocolType() const override { return "VDA5050"; }
+    
+    // Order completion check
+    void checkOrderCompletion(IAmr* amr) override;
 
 private:
+    // MQTT callback handler
     class Vda5050MqttCallback : public mqtt::callback 
     {
     public:
-        Vda5050MqttCallback(Vda5050Protocol* proto) : proto_(proto) {}
+        explicit Vda5050MqttCallback(Vda5050Protocol* proto) : proto_(proto) {}
         void message_arrived(mqtt::const_message_ptr msg) override;
     private:
         Vda5050Protocol* proto_;
     };
 
-    // MQTT 
+    // MQTT connection members
     std::string mqtt_server_uri_;
     std::unique_ptr<mqtt::async_client> mqtt_client_;
     std::shared_ptr<Vda5050MqttCallback> mqtt_callback_;
     mqtt::connect_options conn_opts_;
     
-    // Topic name
+    // VDA5050 Topic names
     std::string state_topic_;
     std::string order_topic_;
     std::string instant_actions_topic;
@@ -83,61 +100,50 @@ private:
     bool running_;
     std::thread publish_thread_;
     
-    // Header ID counter
-    int state_header_id_ = 0;
-    int factsheet_header_id_ = 0;
-    int connection_header_id_ = 0;
+    // VDA5050 Header ID counters (incremental)
+    int state_header_id_;
+    int factsheet_header_id_;
+    int connection_header_id_;
     
-    // Order info
+    // Current order tracking (VDA5050 standard)
     std::string current_order_id_;
     int current_order_update_id_;
     std::string current_zone_set_id_;
-
-    // message validation (VDA5050 Schema validation)
-    std::string makeStateMessage(IAmr* amr);
+    bool order_active_;  // true when order is being executed, false when IDLE
+    
+    // Original order data from FMS (for state reporting)
+    std::vector<NodeInfo> received_nodes_;  // All nodes from FMS order
+    std::vector<EdgeInfo> received_edges_;  // All edges from FMS order
+    
+    // Message creation functions
     std::string makeVisualizationMessage(IAmr* amr);
     std::string makeFactsheetMessage();
     std::string makeConnectMessage();
     
-    // message process 
-    void handleMessage(const std::string& msg, IAmr* amr);
+    // Instant action handling
     void handleInstantAction(const nlohmann::json& instant_action_json);
     
-    // utility function
+    // Utility functions
     std::string getCurrentTimestampISO8601();
     std::string detectConnection();
     
-    // State message helper function
+    // State query helper functions
     std::string getCurrentNodeId(IAmr* amr);
     std::string getCurrentEdgeId(IAmr* amr);
     std::string getLastNodeId(IAmr* amr);
     int getLastNodeSequenceId(IAmr* amr);
     nlohmann::json getCurrentNodePosition(IAmr* amr);
+    double getDistanceSinceLastNode(IAmr* amr);
     
     std::vector<NodeInfo> getUpcomingNodes(IAmr* amr);
     std::vector<EdgeInfo> getUpcomingEdges(IAmr* amr);
     std::vector<ActionInfo> getCurrentActions(IAmr* amr);
     std::vector<ErrorInfo> getSystemErrors(IAmr* amr);
     
+    // Safety status functions
     bool getEmergencyStopStatus(IAmr* amr);
     bool getFieldViolationStatus(IAmr* amr);
     bool isCharging(IAmr* amr);
-
-    // std::string getCurrentNodeId(IAmr* amr);
-    // std::string getCurrentEdgeId(IAmr* amr);
-    // std::vector<NodeInfo> getUpcomingNodes(IAmr* amr);
-    // std::vector<EdgeInfo> getUpcomingEdges(IAmr* amr);
-    // std::vector<ActionInfo> getCurrentActions(IAmr* amr);
-    // std::vector<ErrorInfo> getSystemErrors(IAmr* amr);
-    // bool getEmergencyStopStatus(IAmr* amr);
-    // bool getFieldViolationStatus(IAmr* amr);
-    // bool isCharging(IAmr* amr);
-    // std::string getLastNodeId(IAmr* amr);
-    // int getLastNodeSequenceId(IAmr* amr);
-    // nlohmann::json getCurrentNodePosition(IAmr* amr);
-    
-    // 새로 추가되는 메서드
-    double getDistanceSinceLastNode(IAmr* amr);    
 };
 
 #endif // VDA5050_PROTOCOL_H
