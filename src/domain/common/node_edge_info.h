@@ -21,6 +21,17 @@ struct Action
     std::vector<ActionParameter> actionParameters;  // Nullable
 };
 
+// ActionInfo (State 메시지에서 사용 - 실행 상태 포함)
+struct ActionInfo 
+{
+    std::string actionId;
+    std::string actionType;
+    std::string description;
+    std::string status;  // WAITING, INITIALIZING, RUNNING, PAUSED, FINISHED, FAILED
+    std::string resultDescription;
+    nlohmann::json actionParameters;
+};
+
 // NodePosition 구조체
 struct NodePosition 
 {
@@ -31,6 +42,7 @@ struct NodePosition
     double allowedDeviationTheta;     // Nullable 
     std::string mapId;                // Required
     std::string mapDescription;       // Nullable
+    bool positionInitialized = true;
     
     bool hasTheta = false;
     bool hasAllowedDeviationXY = false;
@@ -142,6 +154,17 @@ struct InstantActionsMessage
     std::string serialNumber;         // Required
     
     std::vector<Action> actions;      // Required
+};
+
+// ========== Error 구조체 ==========
+
+struct ErrorInfo 
+{
+    std::string errorType;
+    std::string errorLevel;  // WARNING, FATAL
+    std::string description;
+    std::string hint;
+    std::vector<std::string> errorReferences;
 };
 
 #endif // NODE_EDGE_INFO_H

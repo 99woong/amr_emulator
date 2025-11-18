@@ -23,7 +23,7 @@ void AmrServerApp::run(const std::string& config_path)
     double next_state_pub = 0.0;
     double next_vis_pub = 0.0;
 
-    std::cout << "speedup_ratio : " << speedup << std::endl;
+    std::cout << "[AmrServer] Starting with speedup_ratio: " << speedup << std::endl;
     
     auto start_time = std::chrono::high_resolution_clock::now();
     auto last_time = start_time;
@@ -64,6 +64,22 @@ void AmrServerApp::run(const std::string& config_path)
                 
                 // amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
                 amr->step(dt_control, other_positions);
+
+                // **[추가]** 노드 도착 이벤트 확인 및 즉시 상태 발행
+                if (amr->needsImmediateStatePublish())
+                {
+                    if (idx < manager.getProtocolCount()) 
+                    {
+                        auto* protocol = manager.getProtocol(idx);
+                        if (protocol) 
+                        {
+                            protocol->publishStateMessage(amr.get());
+                            std::cout << "[AmrServer] Immediate state published for AMR" << amr->getId() << " after node arrival." << std::endl;
+                            // 발행 후 플래그를 리셋
+                            amr->resetImmediateStatePublishFlag();
+                        }
+                    }
+                }                
                 ++idx;                
             }
             next_motor_update += dt_control;
@@ -75,16 +91,17 @@ void AmrServerApp::run(const std::string& config_path)
             {
                 if (i < manager.getProtocolCount()) 
                 {
-                    auto* p = manager.getProtocol(i);
-                    if (p) 
+                    auto* protocol = manager.getProtocol(i);
+                    if (protocol) 
                     {
                         // std::cout << "publishStateMessage" << std::endl;
-                        p->publishStateMessage(amrs[i].get());
+                        protocol->publishStateMessage(amrs[i].get());
                     }
                 }
             }
             next_state_pub += dt_state;
         }
+
         // visualization topic publish: dt_vis 마다 호출
         if (sim_time >= next_vis_pub && dt_vis > 0.0) 
         {

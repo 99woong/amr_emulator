@@ -21,12 +21,14 @@ void Amr::updateBattery(double dt, bool is_charging)
     battery_model_->update(dt, linear_vel, angular_vel, is_charging);
 }
 
+
 double Amr::getBatteryPercent() const
 {
     if (battery_model_)
         return battery_model_->getCapacityPercent();
     return 0.0;
 }
+
 
 void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base)
 {
@@ -53,17 +55,18 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
         // std::cout << "nodes : " << node.nodeId<< std::endl;
     }
 
-    // std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
+    std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
     auto cit = std::find_if(nodes.begin(), nodes.end(),
         [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
     if(cit != nodes.end())
     {
         center_node = &(*cit);
-        // std::cout<<"centern: "<< center_node->nodeId << std::endl;
+        std::cout<<"centern: "<< center_node->nodeId << std::endl;
     }
 
     if(edge.has_turn_center) 
     {
+        // std::cout<<"has_turn_center : "<< center_node->x << " " << center_node->y << std::endl;
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
@@ -77,6 +80,7 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
     } 
     else 
     {
+        // std::cout<<"has_not_turn_center : " << std::endl;
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
@@ -104,6 +108,7 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
 
     if (!edges_.empty() && vcu_)
     {
+        std::cout << "start edge : " << edges_[cur_edge_idx_].edgeId << std::endl;
         const EdgeInfo& edge = edges_[cur_edge_idx_];
         setVcuTargetFromEdge(edge, nodes_, wheel_base);
     }
@@ -295,15 +300,27 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         angle_area_radius = 0.1;
     }
     
-    // std::cout<< "dist: " << dist << " " << reach_distance_radius<<std::endl;
+    // std::cout<< "dist: " << dist  << " " << target_node->nodeId << " " << reach_distance_radius<<std::endl;
     if (dist < reach_distance_radius)
     {
+        std::cout << "[AMR" << id_ << "] Arrived at node: " 
+                  << (target_node ? target_node->nodeId : "unknown") << std::endl;
+
         completed_edges_.push_back(cur_edge);
         
         if (target_node)
         {
             completed_nodes_.push_back(*target_node);
         }        
+        
+        needs_immediate_state_publish_ = true;
+
+        // 즉시 state 발행 (VDA5050 요구사항: 노드 도착 시)
+        // if (protocol_)
+        // {
+        //     protocol_->publishStateMessage(this);
+        //     std::cout << "[AMR" << id_ << "] State published immediately after node arrival" << std::endl;
+        // }
 
         cur_edge_idx_++;
         is_angle_adjusting_ = false;
@@ -324,3 +341,50 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
     }
 }
+
+void Amr::markNodeAsCompleted(const NodeInfo& node)
+{
+    std::cout << "[AMR" << id_ << "] Marking node '" << node.nodeId 
+              << "' as completed (sequenceId: " << node.sequenceId << ")" << std::endl;
+    
+    // completed_nodes에 추가
+    completed_nodes_.push_back(node);
+    
+    std::cout << "[AMR" << id_ << "] Node marked as completed. Total completed nodes: " 
+              << completed_nodes_.size() << std::endl;
+}
+
+void Amr::cancelOrder()
+{
+    std::cout << "[AMR" << id_ << "] Order cancellation requested" << std::endl;
+    
+    // 1. 모든 오더 관련 데이터 초기화
+    nodes_.clear();
+    edges_.clear();
+    cur_edge_idx_ = 0;
+    cur_idx_ = 0;
+    is_angle_adjusting_ = false;
+    
+    // 2. 완료 리스트도 초기화 (새로운 오더를 위해)
+    completed_nodes_.clear();
+    completed_edges_.clear();
+    
+    // 3. VCU를 Idle 상태로 전환 (즉시 정지)
+    if (vcu_)
+    {
+        double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
+        vcu_->getEstimatedPose(current_x, current_y, current_theta);
+        
+        // 현재 위치를 목표로 설정하여 정지
+        vcu_->getNavigation().setTarget(current_x, current_y);
+        
+        // 모터를 0으로 설정
+        vcu_->getMotor().setVelocity(0.0, 0.0);
+        
+        std::cout << "[AMR" << id_ << "] Motion stopped at position (" 
+                  << current_x << ", " << current_y << ")" << std::endl;
+    }
+    
+    std::cout << "[AMR" << id_ << "] Order cancelled - AMR is now IDLE" << std::endl;
+}
+

@@ -1,6 +1,7 @@
 #pragma once
 #include "iamr.h"
 #include "ivcu.h"
+// #include "iprotocol.h"
 #include "vcu.h"
 #include "battery_model.h"
 #include <vector>
@@ -16,7 +17,9 @@ class Amr : public IAmr
 {
 public:
     Amr(int id, std::unique_ptr<Vcu> vcu, std::unique_ptr<IBatteryModel> battery_model);
-    std::string getId() const { return "amr_" + std::to_string(id_); }    
+    std::string getId() const { return "amr_" + std::to_string(id_); } 
+    bool needsImmediateStatePublish() const { return needs_immediate_state_publish_; } 
+    void resetImmediateStatePublishFlag() { needs_immediate_state_publish_ = false; }  
     // void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges) override;
     void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base) override;
     std::string getState() const override;
@@ -34,11 +37,15 @@ public:
     std::string getLastNodeId() const override;
     int getLastNodeSequenceId() const override;    
 
+    void markNodeAsCompleted(const NodeInfo& node) override;
+    void cancelOrder() override;
+
     IVcu* getVcu() override;  
 
 private:
     int id_;
     bool is_angle_adjusting_ = false;
+    bool needs_immediate_state_publish_ = false;
     double wheel_base_;
     std::vector<NodeInfo> nodes_;
     std::vector<EdgeInfo> edges_;
@@ -49,6 +56,8 @@ private:
 
     std::vector<NodeInfo> completed_nodes_;
     std::vector<EdgeInfo> completed_edges_;
+
+    // IProtocol* protocol_;  // VDA5050 프로토콜 참조 추가
 
     Line getLineFromPoints(const NodeInfo& p1, const NodeInfo& p2);
     // NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint); 

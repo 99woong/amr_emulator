@@ -11,33 +11,11 @@
 #include <nlohmann/json.hpp>
 #include "iprotocol.h"
 #include "yaml_config.h"
+#include "node_edge_info.h"
 
 // Forward declarations
 class IAmr;
 struct AmrConfig;
-struct NodeInfo;
-struct EdgeInfo;
-
-// Action info structure
-struct ActionInfo 
-{
-    std::string actionId;
-    std::string actionType;
-    std::string description;
-    std::string status;  // WAITING, INITIALIZING, RUNNING, PAUSED, FINISHED, FAILED
-    std::string resultDescription;
-    nlohmann::json actionParameters;
-};
-
-// Error info structure
-struct ErrorInfo 
-{
-    std::string errorType;
-    std::string errorLevel;  // WARNING, FATAL
-    std::string description;
-    std::string hint;
-    std::vector<std::string> errorReferences;
-};
 
 class Vda5050Protocol : public IProtocol 
 {
@@ -114,6 +92,10 @@ private:
     // Original order data from FMS (for state reporting)
     std::vector<NodeInfo> received_nodes_;  // All nodes from FMS order
     std::vector<EdgeInfo> received_edges_;  // All edges from FMS order
+
+    bool has_order_rejection_error_;
+    std::string order_rejection_error_type_;
+    std::string order_rejection_error_description_;    
     
     // Message creation functions
     std::string makeVisualizationMessage(IAmr* amr);
@@ -122,6 +104,8 @@ private:
     
     // Instant action handling
     void handleInstantAction(const nlohmann::json& instant_action_json);
+
+    void publishOrderRejectionError(const std::string& error_type, const std::string& error_description);
     
     // Utility functions
     std::string getCurrentTimestampISO8601();
