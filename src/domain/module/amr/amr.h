@@ -21,7 +21,7 @@ public:
     bool needsImmediateStatePublish() const { return needs_immediate_state_publish_; } 
     void resetImmediateStatePublishFlag() { needs_immediate_state_publish_ = false; }  
     // void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges) override;
-    void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base) override;
+    void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, const std::vector<NodeInfo>& all_nodes, double wheel_base) override;
     std::string getState() const override;
     std::vector<NodeInfo> getNodes() const override { return nodes_; }
     std::size_t getCurIdx() const override { return cur_idx_; }
@@ -57,12 +57,14 @@ private:
     std::vector<NodeInfo> completed_nodes_;
     std::vector<EdgeInfo> completed_edges_;
 
+    std::vector<NodeInfo> all_nodes_;  // centerNode 찾기용 전체 노드 맵
+
     // IProtocol* protocol_;  // VDA5050 프로토콜 참조 추가
 
     Line getLineFromPoints(const NodeInfo& p1, const NodeInfo& p2);
     // NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, bool firstPoint); 
     NodeInfo calculateTangentPoint(const Line& line, const NodeInfo& center, double radius, const NodeInfo& ref, bool preferCloser); 
     const NodeInfo* findNodeById(const std::vector<NodeInfo>& nodes, const std::string& id);
-    void setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base);
+    void setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, const std::vector<NodeInfo>& all_nodes,  double wheel_base);
 
 };

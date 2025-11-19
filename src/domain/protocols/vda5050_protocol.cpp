@@ -107,6 +107,11 @@ void Vda5050Protocol::start()
             {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 // Periodic tasks can be added here
+                if (amr_)
+                {
+                    // 주기적으로 오더 완료 체크
+                    checkOrderCompletion(amr_);
+                }                
             }
         });        
     } 
@@ -387,7 +392,6 @@ void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_j
     }    
 }
 
-// MESSAGE HANDLER (from FMS) - 수정된 부분만 표시
 void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 {
     std::cout << "[Vda5050Protocol] handleMessage called" << std::endl;
@@ -410,7 +414,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             std::cout << "[Vda5050Protocol] InstantActions received. Processing " 
                       << json_msg["actions"].size() << " action(s)." << std::endl;      
                 
-            // Process all actions
             for (const auto& action : json_msg["actions"])
             {
                 handleInstantAction(action);
@@ -446,9 +449,10 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         std::cout << "[Vda5050Protocol] Processing order: " << current_order_id_ 
                   << " (updateId: " << current_order_update_id_ << ")" << std::endl;
 
-        // Clear and store received nodes and edges
+        // Clear storage
         received_nodes_.clear();
         received_edges_.clear();
+        ordered_nodes_.clear();
 
         std::unordered_map<std::string, NodeInfo> node_map;
 
@@ -498,7 +502,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             }
             
             node_map[n.nodeId] = n;
-            received_nodes_.push_back(n);  // Store for state reporting
+            received_nodes_.push_back(n);
         }
 
         // Parse edges
@@ -573,7 +577,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             }
             
             edges.push_back(e);
-            received_edges_.push_back(e);  // Store for state reporting
+            received_edges_.push_back(e);
         }
 
         // Sort edges by sequence ID
@@ -582,7 +586,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return a.sequenceId < b.sequenceId;
         });
 
-        // ✅ 수정 1: 에지가 비어있는지 확인
         if (edges.empty())
         {
             std::cerr << "[Vda5050Protocol] Order has no edges" << std::endl;
@@ -590,11 +593,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
         
-        // ✅ 수정 2: 에지 시퀀스 기반으로 노드 순서 재구성
-        std::vector<NodeInfo> ordered_nodes;
-        std::unordered_set<std::string> processed_node_ids;
-        
-        // 첫 번째 에지의 startNode부터 시작
+        // 에지 순서로 노드 리스트 생성 (순환 경로 지원)
         std::string first_node_id = edges[0].startNodeId;
         
         if (node_map.find(first_node_id) == node_map.end())
@@ -604,42 +603,27 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
         
-        ordered_nodes.push_back(node_map[first_node_id]);
-        processed_node_ids.insert(first_node_id);
+        const NodeInfo& start_node = node_map[first_node_id];
         
-        // 에지 순서대로 노드 추가
+        // 에지 순서대로 endNode만 추가 (startNode 제외)
+        // 순환 경로의 경우, 마지막 에지의 endNode가 첫 번째 startNode와 같을 수 있음
         for (const auto& edge : edges)
         {
-            // endNode가 아직 처리되지 않았다면 추가
-            if (processed_node_ids.find(edge.endNodeId) == processed_node_ids.end())
+            if (node_map.find(edge.endNodeId) == node_map.end())
             {
-                if (node_map.find(edge.endNodeId) == node_map.end())
-                {
-                    std::cerr << "[Vda5050Protocol] End node not found: " << edge.endNodeId << std::endl;
-                    publishOrderRejectionError("END_NODE_NOT_FOUND", "End node " + edge.endNodeId + " not found in order");
-                    return;
-                }
-                std::cout << "insert_node : " << node_map[edge.endNodeId].nodeId << std::endl;
-                ordered_nodes.push_back(node_map[edge.endNodeId]);
-                processed_node_ids.insert(edge.endNodeId);
+                std::cerr << "[Vda5050Protocol] End node not found: " << edge.endNodeId << std::endl;
+                publishOrderRejectionError("END_NODE_NOT_FOUND", "End node " + edge.endNodeId + " not found in order");
+                return;
             }
+            
+            std::cout << "[Vda5050Protocol] Adding endNode to ordered_nodes_: " << edge.endNodeId << std::endl;
+            ordered_nodes_.push_back(node_map[edge.endNodeId]);
         }
 
-        // 시작 노드 위치 검증
-        if (ordered_nodes.empty())
-        {
-            std::cerr << "[Vda5050Protocol] Order has no nodes" << std::endl;
-            publishOrderRejectionError("ORDER_NO_NODES", "Order contains no nodes");
-            return;
-        }
+        std::cout << "[Vda5050Protocol] Total nodes in ordered_nodes_: " << ordered_nodes_.size() << std::endl;
+        std::cout << "[Vda5050Protocol] Start node (will be marked as completed): " << start_node.nodeId << std::endl;
 
-        // 현재 차량 위치 가져오기
-        double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
-        amr->getVcu()->getEstimatedPose(current_x, current_y, current_theta);
-
-        // 시작 노드
-        const NodeInfo& start_node = ordered_nodes[0];
-        
+        // Start node position validation
         if (!start_node.hasNodePosition)
         {
             std::cerr << "[Vda5050Protocol] Start node has no position information" << std::endl;
@@ -647,7 +631,11 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
 
-        // 시작 노드와 현재 위치 간 거리 계산
+        // Get current vehicle position
+        double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
+        amr->getVcu()->getEstimatedPose(current_x, current_y, current_theta);
+
+        // Calculate distance to start node
         double dx = start_node.nodePosition.x - current_x;
         double dy = start_node.nodePosition.y - current_y;
         double distance_to_start = std::hypot(dx, dy);
@@ -657,7 +645,7 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
                   << " | start: " << start_node.nodePosition.x << ", " << start_node.nodePosition.y << ")" 
                   << std::endl;
 
-        constexpr double MAX_START_NODE_DISTANCE = 1.0;  // 1m
+        constexpr double MAX_START_NODE_DISTANCE = 1.0;
 
         if (distance_to_start > MAX_START_NODE_DISTANCE)
         {
@@ -676,17 +664,24 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
         std::cout << "[Vda5050Protocol] Start node within acceptable range (" 
                   << distance_to_start << "m). Marking as completed." << std::endl;
 
-        // ✅ 수정 3: order_active_ 플래그 설정 (중요!)
+        // Set order active flag
         order_active_ = true;
         
-        // Send order to AMR for execution
-        amr->setOrder(ordered_nodes, edges, 15.0);
+        // Convert node_map to vector for all_nodes
+        std::vector<NodeInfo> all_nodes;
+        for (const auto& pair : node_map)
+        {
+            all_nodes.push_back(pair.second);
+        }
+        
+        // Send order to AMR
+        amr->setOrder(ordered_nodes_, edges, all_nodes, 15.0);
 
         // Mark start node as completed
         amr->markNodeAsCompleted(start_node);
 
-        std::cout << "[Vda5050Protocol] Order sent to AMR: " << ordered_nodes.size()
-                  << " nodes (edge-sequence based), " << edges.size() << " edges" << std::endl;
+        std::cout << "[Vda5050Protocol] Order sent to AMR: " << ordered_nodes_.size()
+                  << " nodes (endNodes), " << edges.size() << " edges" << std::endl;
         
         // Publish state immediately after receiving order
         publishStateMessage(amr);
@@ -702,287 +697,6 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
     }
 }
 
-// MESSAGE HANDLER (from FMS)
-// void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
-// {
-//     std::cout << "[Vda5050Protocol] handleMessage called" << std::endl;
-
-//     if (msg.empty() || !amr) 
-//     {
-//         std::cerr << "[Vda5050Protocol] Empty message or null AMR pointer" << std::endl;
-//         return;
-//     }
-
-//     try 
-//     {
-//         std::cout << "[Vda5050Protocol] Received message: " << msg << std::endl;
-
-//         auto json_msg = nlohmann::json::parse(msg);
-
-//         // Check if this is an InstantActions message
-//         if (json_msg.contains("actions") && json_msg["actions"].is_array())
-//         {
-//             std::cout << "[Vda5050Protocol] InstantActions received. Processing " 
-//                       << json_msg["actions"].size() << " action(s)." << std::endl;      
-                
-//             // Process all actions
-//             for (const auto& action : json_msg["actions"])
-//             {
-//                 handleInstantAction(action);
-//             }
-//             return;
-//         }
-
-//         // Check if this is an Order message
-//         if (!json_msg.contains("nodes") || !json_msg.contains("edges")) 
-//         {
-//             std::cerr << "[Vda5050Protocol] Order missing required nodes or edges fields" << std::endl;
-//             return;
-//         }
-
-//         // Extract order information
-//         if (json_msg.contains("orderId"))
-//         {
-//             current_order_id_ = json_msg["orderId"].get<std::string>();
-//         }
-//         if (json_msg.contains("orderUpdateId"))
-//         {
-//             current_order_update_id_ = json_msg["orderUpdateId"].get<int>();
-//         }
-//         if (json_msg.contains("zoneSetId") && !json_msg["zoneSetId"].is_null())
-//         {
-//             current_zone_set_id_ = json_msg["zoneSetId"].get<std::string>();
-//         }
-//         else
-//         {
-//             current_zone_set_id_ = "";
-//         }
-
-//         std::cout << "[Vda5050Protocol] Processing order: " << current_order_id_ 
-//                   << " (updateId: " << current_order_update_id_ << ")" << std::endl;
-
-//         // Clear and store received nodes and edges
-//         received_nodes_.clear();
-//         received_edges_.clear();
-
-//         std::unordered_map<std::string, NodeInfo> node_map;
-//         std::vector<NodeInfo> ordered_nodes;
-
-//         // Parse nodes
-//         for (const auto& node : json_msg["nodes"])
-//         {
-//             NodeInfo n;
-//             n.nodeId = node.value("nodeId", "");
-//             n.sequenceId = node.value("sequenceId", 0);
-//             n.released = node.value("released", false);  // Store original released value
-            
-//             if (node.contains("nodePosition") && !node["nodePosition"].is_null())
-//             {
-//                 n.x = node["nodePosition"].value("x", 0.0);
-//                 n.y = node["nodePosition"].value("y", 0.0);
-//                 n.hasNodePosition = true;
-//                 n.nodePosition.x = n.x;
-//                 n.nodePosition.y = n.y;
-//                 n.nodePosition.mapId = node["nodePosition"].value("mapId", "default_map");
-//                 n.nodePosition.theta = node["nodePosition"].value("theta", 0.0);
-//                 n.nodePosition.positionInitialized = true;
-//             }
-            
-//             if (node.contains("actions") && node["actions"].is_array())
-//             {
-//                 for (const auto& action_json : node["actions"])
-//                 {
-//                     Action action;  // ActionInfo가 아닌 Action 사용
-//                     action.actionId = action_json.value("actionId", "");
-//                     action.actionType = action_json.value("actionType", "");
-//                     action.actionDescription = action_json.value("actionDescription", "");
-//                     action.blockingType = action_json.value("blockingType", "HARD");
-                    
-//                     // actionParameters 파싱
-//                     if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-//                     {
-//                         for (const auto& param_json : action_json["actionParameters"])
-//                         {
-//                             ActionParameter param;
-//                             param.key = param_json.value("key", "");
-//                             param.value = param_json.value("value", nlohmann::json());
-//                             action.actionParameters.push_back(param);
-//                         }
-//                     }
-                    
-//                     n.actions.push_back(action);
-//                 }
-//             }
-            
-//             node_map[n.nodeId] = n;
-//             ordered_nodes.push_back(n);
-//             received_nodes_.push_back(n);  // Store for state reporting
-//         }
-
-//         // Parse edges
-//         std::vector<EdgeInfo> edges;
-//         for (const auto& edge : json_msg["edges"])
-//         {
-//             EdgeInfo e;
-//             e.edgeId = edge.value("edgeId", "");
-//             e.sequenceId = edge.value("sequenceId", 0);
-//             e.startNodeId = edge.value("startNodeId", "");
-//             e.endNodeId = edge.value("endNodeId", "");
-//             e.released = edge.value("released", false);  // Store original released value
-//             e.centerNodeId = edge.value("centerNodeId", "");            
-            
-//             if (edge.contains("maxSpeed") && !edge["maxSpeed"].is_null())
-//             {
-//                 e.maxSpeed = edge["maxSpeed"].get<double>();
-//             }
-            
-//             if (!e.centerNodeId.empty())
-//             {
-//                 e.has_turn_center = true;
-//             }
-            
-//             if (edge.contains("actions") && edge["actions"].is_array())
-//             {
-//                 for (const auto& action_json : edge["actions"])
-//                 {
-//                     Action action;  // ActionInfo가 아닌 Action 사용
-//                     action.actionId = action_json.value("actionId", "");
-//                     action.actionType = action_json.value("actionType", "");
-//                     action.actionDescription = action_json.value("actionDescription", "");
-//                     action.blockingType = action_json.value("blockingType", "HARD");
-                    
-//                     // actionParameters 파싱
-//                     if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-//                     {
-//                         for (const auto& param_json : action_json["actionParameters"])
-//                         {
-//                             ActionParameter param;
-//                             param.key = param_json.value("key", "");
-//                             param.value = param_json.value("value", nlohmann::json());
-//                             action.actionParameters.push_back(param);
-//                         }
-//                     }
-                    
-//                     e.actions.push_back(action);
-//                 }
-//             }            
-            
-//             // Parse trajectory if present
-//             if (edge.contains("trajectory") && !edge["trajectory"].is_null())
-//             {
-//                 e.hasTrajectory = true;
-//                 e.trajectory.degree = edge["trajectory"].value("degree", 3);
-//                 e.trajectory.knotVector = edge["trajectory"].value("knotVector", std::vector<double>());
-                
-//                 if (edge["trajectory"].contains("controlPoints") && edge["trajectory"]["controlPoints"].is_array())
-//                 {
-//                     for (const auto& cp_json : edge["trajectory"]["controlPoints"])
-//                     {
-//                         ControlPoint cp;
-//                         cp.x = cp_json.value("x", 0.0);
-//                         cp.y = cp_json.value("y", 0.0);
-//                         if (cp_json.contains("weight") && !cp_json["weight"].is_null())
-//                         {
-//                             cp.weight = cp_json["weight"].get<double>();
-//                             cp.hasWeight = true;
-//                         }
-//                         e.trajectory.controlPoints.push_back(cp);
-//                     }
-//                 }
-//             }
-            
-//             edges.push_back(e);
-//             received_edges_.push_back(e);  // Store for state reporting
-//         }
-
-//         // Sort edges by sequence ID
-//         std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
-//         {
-//             return a.sequenceId < b.sequenceId;
-//         });
-
-//         // 1. 엣지 리스트가 비어있는지 확인
-//         if (edges.empty())
-//         {
-//             std::cerr << "[Vda5050Protocol] Order has no edges" << std::endl;
-//             publishOrderRejectionError("ORDER_NO_EDGES", "Order contains no edges for driving");
-//             return;
-//         }
-        
-//         // // 시작 노드 위치 검증 및 처리
-//         if (ordered_nodes.empty())
-//         {
-//             std::cerr << "[Vda5050Protocol] Order has no nodes" << std::endl;
-//             publishOrderRejectionError("ORDER_NO_NODES", "Order contains no nodes");
-//             return;
-//         }
-
-//         // 현재 차량 위치 가져오기
-//         double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
-//         amr->getVcu()->getEstimatedPose(current_x, current_y, current_theta);
-
-//         // 시작 노드 (sequenceId가 가장 작은 노드)
-//         const NodeInfo& start_node = ordered_nodes[0];
-        
-//         if (!start_node.hasNodePosition)
-//         {
-//             std::cerr << "[Vda5050Protocol] Start node has no position information" << std::endl;
-//             publishOrderRejectionError("START_NODE_NO_POSITION", "Start node missing position");
-//             return;
-//         }
-
-//         // 시작 노드와 현재 위치 간 거리 계산
-//         double dx = start_node.nodePosition.x - current_x;
-//         double dy = start_node.nodePosition.y - current_y;
-//         double distance_to_start = std::hypot(dx, dy);
-
-//         std::cout << "[Vda5050Protocol] Distance to start node '" << start_node.nodeId 
-//                   << "': " << distance_to_start << "m (current: " << current_x << ", " << current_y 
-//                   << " | start: " << start_node.nodePosition.x << ", " << start_node.nodePosition.y << ")" 
-//                   << std::endl;
-
-//         constexpr double MAX_START_NODE_DISTANCE = 1.0;  // 1m
-
-//         if (distance_to_start > MAX_START_NODE_DISTANCE)
-//         {
-//             // 1m 이상 벗어남 → 오더 거절
-//             std::cerr << "[Vda5050Protocol] Start node too far from current position: " 
-//                       << distance_to_start << "m (max: " << MAX_START_NODE_DISTANCE << "m)" << std::endl;
-            
-//             std::ostringstream error_msg;
-//             error_msg << "Start node '" << start_node.nodeId << "' is " 
-//                       << distance_to_start << "m away from current position (max: " 
-//                       << MAX_START_NODE_DISTANCE << "m)";
-            
-//             publishOrderRejectionError("START_NODE_TOO_FAR", error_msg.str());
-//             return;
-//         }
-
-//         // 1m 이내 → 시작 노드를 완료된 것으로 처리
-//         std::cout << "[Vda5050Protocol] Start node within acceptable range (" 
-//                   << distance_to_start << "m). Marking as completed." << std::endl;
-
-//         // Send order to AMR for execution
-//         amr->setOrder(ordered_nodes, edges, 15.0);
-
-//         amr->markNodeAsCompleted(start_node);
-
-//         // std::cout << "[Vda5050Protocol] Order sent to AMR: " << nodes_to_process.size()
-//         //           << " nodes (excluding start node), " << edges_to_process.size() << " edges" << std::endl;
-        
-//         // Publish state immediately after receiving order (Requirement 7)
-//         publishStateMessage(amr);
-//         std::cout << "[Vda5050Protocol] State published immediately after order reception" << std::endl;
-//     } 
-//     catch (const nlohmann::json::exception& e)
-//     {
-//         std::cerr << "[Vda5050Protocol] JSON Parsing Error: " << e.what() << std::endl;
-//     }
-//     catch (const std::exception& e)
-//     {
-//         std::cerr << "[Vda5050Protocol] Unknown Error in handleMessage: " << e.what() << std::endl;
-//     }
-// }
 
 void Vda5050Protocol::publishOrderRejectionError(const std::string& error_type, const std::string& error_description)
 {
@@ -1175,7 +889,7 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
             // Skip completed nodes
             if (completed_node_ids.find(node.nodeId) != completed_node_ids.end())
             {
-                std::cout <<"skip : " << node.nodeId << std::endl;
+                // std::cout <<"skip : " << node.nodeId << std::endl;
                 continue;
             }
             
@@ -1392,26 +1106,86 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
     return state_json.dump();
 }
 
-// ORDER COMPLETION CHECK
 void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
 {
     if (!order_active_ || !amr)
         return;
     
-    // Check if all nodes and edges are completed
     auto completed_nodes = amr->getCompletedNodes();
     auto completed_edges = amr->getCompletedEdges();
     
-    bool all_nodes_completed = (completed_nodes.size() == received_nodes_.size());
-    bool all_edges_completed = (completed_edges.size() == received_edges_.size());
+    // 디버깅: completed_nodes 내용 출력
+    std::cout << "[checkOrderCompletion] Completed nodes list:" << std::endl;
+    for (size_t i = 0; i < completed_nodes.size(); ++i)
+    {
+        std::cout << "  [" << i << "] " << completed_nodes[i].nodeId << std::endl;
+    }
     
-    if (all_nodes_completed && all_edges_completed && !received_nodes_.empty())
+    // 순환 경로 감지
+    bool is_circular = false;
+    if (!completed_nodes.empty() && !ordered_nodes_.empty())
+    {
+        const std::string& start_node_id = completed_nodes.front().nodeId;
+        const std::string& last_ordered_node_id = ordered_nodes_.back().nodeId;
+        
+        if (start_node_id == last_ordered_node_id)
+        {
+            is_circular = true;
+            std::cout << "[Vda5050Protocol] Circular path detected: start='" << start_node_id 
+                      << "' == end='" << last_ordered_node_id << "'" << std::endl;
+        }
+    }
+    
+    // 수정: 순환 경로일 때 고유 노드 개수 계산
+    size_t unique_node_count = completed_nodes.size();
+    
+    if (is_circular)
+    {
+        // 순환 경로: 시작 노드와 끝 노드가 같으므로 중복 카운트
+        // 고유 노드 개수 = completed_nodes.size() (중복이 이미 제거되어야 함)
+        // 하지만 실제로는 중복이 있을 수 있으므로 다시 계산
+        std::set<std::string> unique_nodes;
+        for (const auto& node : completed_nodes)
+        {
+            unique_nodes.insert(node.nodeId);
+        }
+        unique_node_count = unique_nodes.size();
+        
+        std::cout << "[Vda5050Protocol] Unique node count (set): " << unique_node_count 
+                  << " (original: " << completed_nodes.size() << ")" << std::endl;
+    }
+    
+    bool all_nodes_completed;
+    if (is_circular)
+    {
+        // 순환: 고유 노드 개수 == ordered_nodes_ 크기
+        all_nodes_completed = (unique_node_count == ordered_nodes_.size());
+    }
+    else
+    {
+        all_nodes_completed = (completed_nodes.size() == ordered_nodes_.size() + 1);
+    }
+    
+    bool all_edges_completed = (completed_edges.size() == received_edges_.size());
+
+    std::cout << "[Vda5050Protocol] Order progress: Nodes(" << completed_nodes.size() 
+              << "/" << (is_circular ? ordered_nodes_.size() : ordered_nodes_.size() + 1) 
+              << ", unique: " << unique_node_count
+              << "), Edges(" << completed_edges.size() << "/" << received_edges_.size() 
+              << ") [" << (is_circular ? "CIRCULAR" : "LINEAR") << "]" << std::endl;    
+    
+    if (all_nodes_completed && all_edges_completed && !ordered_nodes_.empty())
     {
         std::cout << "[Vda5050Protocol] Order completed - switching to IDLE state" << std::endl;
         order_active_ = false;
+
+        current_order_id_ = "";
+        current_order_update_id_ = 0;
+        current_zone_set_id_ = "";        
         
-        // Publish state with empty nodeStates and edgeStates
         publishStateMessage(amr);
+
+        std::cout << "[Vda5050Protocol] IDLE state confirmed. Ready for next order." << std::endl;
     }
 }
 
@@ -1474,24 +1248,6 @@ std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)
         completed_node_ids.insert(node.nodeId);
     }
     
-    // Actions from uncompleted nodes
-    // for (const auto& node : received_nodes_)
-    // {
-    //     if (completed_node_ids.find(node.nodeId) == completed_node_ids.end())
-    //     {
-    //         for (const auto& action : node.actions)
-    //         {
-    //             ActionInfo action_info;
-    //             action_info.actionId = action.actionId;
-    //             action_info.actionType = action.actionType;
-    //             action_info.description = action.actionDescription;
-                
-    //             // TODO: Get actual action status from AMR
-    //             action_info.status = "RUNNING";  
-    //             actions.push_back(action_info);
-    //         }
-    //     }
-    // }
     for (const auto& node : received_nodes_)
     {
         if (completed_node_ids.find(node.nodeId) == completed_node_ids.end())
@@ -1501,7 +1257,7 @@ std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)
                 ActionInfo action_info;
                 action_info.actionId = action.actionId;
                 action_info.actionType = action.actionType;
-                action_info.description = action.actionDescription;  // ✅ 필드명 수정
+                action_info.description = action.actionDescription;  // 필드명 수정
                 
                 // TODO: Get actual action status from AMR
                 // 현재는 간단히 WAITING으로 설정
@@ -1532,24 +1288,6 @@ std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)
         completed_edge_ids.insert(edge.edgeId);
     }
     
-    // Actions from uncompleted edges
-    // for (const auto& edge : received_edges_)
-    // {
-    //     if (completed_edge_ids.find(edge.edgeId) == completed_edge_ids.end())
-    //     {
-    //         for (const auto& action : edge.actions)
-    //         {
-    //             ActionInfo action_info;
-    //             action_info.actionId = action.actionId;
-    //             action_info.actionType = action.actionType;
-    //             action_info.description = action.actionDescription;
-                
-    //             // TODO: Get actual action status from AMR
-    //             action_info.status = "RUNNING";
-    //             actions.push_back(action_info);
-    //         }
-    //     }
-    // }
     for (const auto& edge : received_edges_)
     {
         if (completed_edge_ids.find(edge.edgeId) == completed_edge_ids.end())
@@ -1559,7 +1297,7 @@ std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)
                 ActionInfo action_info;
                 action_info.actionId = action.actionId;
                 action_info.actionType = action.actionType;
-                action_info.description = action.actionDescription;  // ✅ 필드명 수정
+                action_info.description = action.actionDescription;  // 필드명 수정
                 
                 // TODO: Get actual action status from AMR
                 action_info.status = "WAITING";

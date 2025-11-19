@@ -30,41 +30,47 @@ double Amr::getBatteryPercent() const
 }
 
 
-void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, double wheel_base)
+void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, const std::vector<NodeInfo>& all_nodes, double wheel_base)
 {
     // target_node 찾기
     // std::cout << "set edge id : " << edge.edgeId << std::endl;
     const NodeInfo* target_node = nullptr;
     const NodeInfo* start_node = nullptr;
     const NodeInfo* center_node = nullptr;
+
     auto it = std::find_if(nodes.begin(), nodes.end(),
         [&](const NodeInfo& n) { return n.nodeId == edge.endNodeId; });
     if (it != nodes.end())
         target_node = &(*it);
 
-    auto sit = std::find_if(nodes.begin(), nodes.end(),
+    auto sit = std::find_if(all_nodes.begin(), all_nodes.end(),
         [&](const NodeInfo& n) { return n.nodeId == edge.startNodeId; });        
-    if (sit != nodes.end())
+    if (sit != all_nodes.end())
     {
         start_node = &(*sit);
-        // std::cout<<"startn: "<< start_node->nodeId << std::endl;
     }
 
-    for(auto node : nodes)
+    if (!edge.centerNodeId.empty())
     {
-        // std::cout << "nodes : " << node.nodeId<< std::endl;
+        std::cout << "[AMR] Looking for centerNodeId: " << edge.centerNodeId << std::endl;
+        
+        auto cit = std::find_if(all_nodes.begin(), all_nodes.end(),
+            [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
+        
+        if (cit != all_nodes.end())
+        {
+            center_node = &(*cit);
+            std::cout << "[AMR] Found centerNode: " << center_node->nodeId 
+                      << " at (" << center_node->x << ", " << center_node->y << ")" << std::endl;
+        }
+        else
+        {
+            std::cerr << "[AMR] WARNING: centerNode '" << edge.centerNodeId 
+                      << "' not found in all_nodes!" << std::endl;
+        }
     }
 
-    std::cout << " centerNodeId : "<< edge.centerNodeId <<std::endl;
-    auto cit = std::find_if(nodes.begin(), nodes.end(),
-        [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
-    if(cit != nodes.end())
-    {
-        center_node = &(*cit);
-        std::cout<<"centern: "<< center_node->nodeId << std::endl;
-    }
-
-    if(edge.has_turn_center) 
+    if(edge.has_turn_center && center_node) 
     {
         // std::cout<<"has_turn_center : "<< center_node->x << " " << center_node->y << std::endl;
         vcu_->setTargetPosition(
@@ -95,10 +101,12 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
 }
 
 
-void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base)
+void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, const std::vector<NodeInfo>& all_nodes, double wheel_base)
 {
     nodes_ = nodes;
     edges_ = edges;
+    all_nodes_ = all_nodes; 
+
     cur_edge_idx_ = 0;
     is_angle_adjusting_ = false;
     wheel_base_ = wheel_base;
@@ -108,9 +116,13 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
 
     if (!edges_.empty() && vcu_)
     {
+        std::cout << "[AMR] Starting order with edge: " << edges_[cur_edge_idx_].edgeId << std::endl;
+        std::cout << "[AMR] Nodes for driving (endNodes): " << nodes_.size() << std::endl;
+        std::cout << "[AMR] All nodes available (including centerNodes): " << all_nodes_.size() << std::endl;
+                
         std::cout << "start edge : " << edges_[cur_edge_idx_].edgeId << std::endl;
         const EdgeInfo& edge = edges_[cur_edge_idx_];
-        setVcuTargetFromEdge(edge, nodes_, wheel_base);
+        setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
     }
 }
 
@@ -255,17 +267,15 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     static double reach_distance_radius = 0.1;
     static double angle_area_radius = 0.1;
 
-    // vcu_->update(dt, other_robot_positions);
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);
 
     if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
     {
-        // std::cout << "Idle Vehible!! " << std::endl;
         vcu_->Idle(dt);
-
         return;
     }
+    
     vcu_->update(dt, other_robot_positions);
 
     const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
@@ -273,26 +283,36 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
 
     auto it = std::find_if(nodes_.begin(), nodes_.end(),
         [&](const NodeInfo& n) { return n.nodeId == cur_edge.endNodeId; });
+    
     if (it != nodes_.end())
+    {
         target_node = &(*it);
+    }
+    else
+    {
+        std::cerr << "[AMR" << id_ << "] ERROR: Target node '" << cur_edge.endNodeId 
+                  << "' not found for edge '" << cur_edge.edgeId << "'" << std::endl;
+        vcu_->Idle(dt);
+        return;
+    }
+
+    if (!target_node)
+    {
+        std::cerr << "[AMR" << id_ << "] ERROR: target_node is null" << std::endl;
+        vcu_->Idle(dt);
+        return;
+    }
 
     double dx = target_node->x - cur_x;
     double dy = target_node->y - cur_y;
-
-    //현재위치와 목표위치 차이 계산
     double dist = std::hypot(dx, dy);
 
-    // maxSpeed를 MotorController에 설정
     vcu_->getMotor().setMaxSpeed(cur_edge.maxSpeed);
     
-    // std::cout << "dist : " << dist << " dtheta : " << dtheta << " tx : " << target_node->x << " cx : " << cur_x << " ty : " << target_node->y << " cy : " << cur_y << " tt : " << target_node->theta << " ct : " << cur_theta << std::endl;
-
-    if(cur_edge.has_turn_center)
+    if (cur_edge.has_turn_center)
     {
         reach_distance_radius = 0.8;
         angle_area_radius = 0.8;
-        // reach_distance_radius = 0.1;
-        // angle_area_radius = 0.1;
     }
     else
     {
@@ -300,59 +320,95 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         angle_area_radius = 0.1;
     }
     
-    // std::cout<< "dist: " << dist  << " " << target_node->nodeId << " " << reach_distance_radius<<std::endl;
     if (dist < reach_distance_radius)
     {
-        std::cout << "[AMR" << id_ << "] Arrived at node: " 
-                  << (target_node ? target_node->nodeId : "unknown") << std::endl;
+        std::cout << "[AMR" << id_ << "] Arrived at node: " << target_node->nodeId 
+                  << " (current completed: " << completed_nodes_.size() << ")" << std::endl;
 
+        // 에지를 먼저 추가
         completed_edges_.push_back(cur_edge);
         
-        if (target_node)
+        // 중복 체크 강화 - 디버깅 출력 추가
+        bool is_duplicate = false;
+        
+        std::cout << "[AMR" << id_ << "] Checking for duplicates. Current completed_nodes_:" << std::endl;
+        for (size_t i = 0; i < completed_nodes_.size(); ++i)
+        {
+            std::cout << "  [" << i << "] " << completed_nodes_[i].nodeId << std::endl;
+            
+            if (completed_nodes_[i].nodeId == target_node->nodeId)
+            {
+                is_duplicate = true;
+                // std::cout << "[AMR" << id_ << "] DUPLICATE FOUND: Node '" << target_node->nodeId 
+                //           << "' already at index " << i << std::endl;
+                break;
+            }
+        }
+        
+        if (is_duplicate)
+        {
+            std::cout << "[AMR" << id_ << "] kipping duplicate node '" << target_node->nodeId 
+                      << "' (circular path)" << std::endl;
+        }
+        else
         {
             completed_nodes_.push_back(*target_node);
-        }        
+            std::cout << "[AMR" << id_ << "] Added node '" << target_node->nodeId 
+                      << "' (total: " << completed_nodes_.size() << ")" << std::endl;
+        }
         
         needs_immediate_state_publish_ = true;
-
-        // 즉시 state 발행 (VDA5050 요구사항: 노드 도착 시)
-        // if (protocol_)
-        // {
-        //     protocol_->publishStateMessage(this);
-        //     std::cout << "[AMR" << id_ << "] State published immediately after node arrival" << std::endl;
-        // }
 
         cur_edge_idx_++;
         is_angle_adjusting_ = false;
 
         if (cur_edge_idx_ >= edges_.size())
         {
-            // 오더 완료
+            std::cout << "[AMR" << id_ << "] All edges completed. Order finished." << std::endl;
+            std::cout << "[AMR" << id_ << "] Final stats: " 
+                      << completed_nodes_.size() << " nodes, " 
+                      << completed_edges_.size() << " edges" << std::endl;
+            
             nodes_.clear();
             edges_.clear();
+            all_nodes_.clear();
             cur_edge_idx_ = 0;
+            
+            vcu_->Idle(dt);
             
             return;
         }
 
         const EdgeInfo& next_edge = edges_[cur_edge_idx_];
-
-        // std::cout<< "idx: " << cur_edge_idx_ << "edge " << edges_[cur_edge_idx_].edgeId <<std::endl;
-        setVcuTargetFromEdge(next_edge, nodes_, wheel_base_);
+        std::cout << "[AMR" << id_ << "] Moving to next edge: " << next_edge.edgeId 
+                  << " (idx: " << cur_edge_idx_ << "/" << edges_.size() << ")" << std::endl;
+        
+        setVcuTargetFromEdge(next_edge, nodes_, all_nodes_, wheel_base_);
     }
 }
 
 void Amr::markNodeAsCompleted(const NodeInfo& node)
 {
-    std::cout << "[AMR" << id_ << "] Marking node '" << node.nodeId 
-              << "' as completed (sequenceId: " << node.sequenceId << ")" << std::endl;
+    std::cout << "[AMR" << id_ << "] markNodeAsCompleted called for: '" << node.nodeId 
+              << "' (sequenceId: " << node.sequenceId << ")" << std::endl;
     
-    // completed_nodes에 추가
+    // 추가: 중복 체크
+    for (const auto& completed_node : completed_nodes_)
+    {
+        if (completed_node.nodeId == node.nodeId)
+        {
+            std::cout << "[AMR" << id_ << "] Node '" << node.nodeId 
+                      << "' already marked as completed. Skipping." << std::endl;
+            return;
+        }
+    }
+    
     completed_nodes_.push_back(node);
     
     std::cout << "[AMR" << id_ << "] Node marked as completed. Total completed nodes: " 
               << completed_nodes_.size() << std::endl;
 }
+
 
 void Amr::cancelOrder()
 {

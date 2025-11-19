@@ -92,6 +92,7 @@ private:
     // Original order data from FMS (for state reporting)
     std::vector<NodeInfo> received_nodes_;  // All nodes from FMS order
     std::vector<EdgeInfo> received_edges_;  // All edges from FMS order
+    std::vector<NodeInfo> ordered_nodes_; 
 
     bool has_order_rejection_error_;
     std::string order_rejection_error_type_;

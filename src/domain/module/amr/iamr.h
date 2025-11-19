@@ -29,7 +29,7 @@ public:
 
     virtual IVcu* getVcu() = 0;  // VCU 접근용 인터페이스
 
-    virtual void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, double wheel_base) = 0;
+    virtual void setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, const std::vector<NodeInfo>& all_nodes, double wheel_base) = 0;
     virtual void cancelOrder() = 0;
 
     virtual void markNodeAsCompleted(const NodeInfo& node) = 0;
