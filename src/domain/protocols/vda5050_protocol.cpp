@@ -14,6 +14,15 @@
 void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_ptr msg) 
 {
     std::cout << "[MQTT] Message arrived on topic: " << msg->get_topic() << std::endl;
+
+    // 수신 로그
+    if (proto_) 
+    {
+        proto_->logMessage("IN",
+                           msg->get_topic(),
+                           msg->to_string());
+    }
+
     if (msg->get_topic() == proto_->order_topic_ || msg->get_topic() == proto_->instant_actions_topic) 
     {
         proto_->handleMessage(msg->to_string(), proto_->amr_);
@@ -91,6 +100,8 @@ void Vda5050Protocol::start()
         pubmsg->set_qos(1);
         pubmsg->set_retained(false);
         mqtt_client_->publish(pubmsg);
+        // 로그
+        logMessage("OUT", connection_topic_, connect_msg);
         
         // Subscribe to order and instant actions topics
         mqtt_client_->subscribe(order_topic_, 1)->wait();
@@ -344,6 +355,9 @@ void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_j
             if (mqtt_client_ && mqtt_client_->is_connected())
             {
                 mqtt_client_->publish(msg);
+
+                logMessage("OUT", factsheet_topic_, factsheet_msg);
+
                 std::cout << "[Vda5050Protocol] Factsheet published in response to request: " 
                           << actionId << std::endl;
             }
@@ -745,6 +759,9 @@ void Vda5050Protocol::publishVisualizationMessage(IAmr* amr)
             auto msg = mqtt::make_message(visualization_topic_, viz_msg);
             msg->set_qos(1);
             mqtt_client_->publish(msg);
+
+            // 송신 로그
+            logMessage("OUT", visualization_topic_, viz_msg);
         }
     }
     catch(const std::exception& e)
@@ -808,6 +825,10 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
             auto msg = mqtt::make_message(state_topic_, state_msg);
             msg->set_qos(1);
             mqtt_client_->publish(msg);
+
+            // 송신 로그
+            logMessage("OUT", state_topic_, state_msg);
+
             std::cout << "[Vda5050Protocol] State message published successfully" << std::endl;
         }
     } 
@@ -906,7 +927,7 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
                     {"y", node.nodePosition.y},
                     {"mapId", node.nodePosition.mapId},
                     {"theta", node.nodePosition.theta},
-                    {"positionInitialized", node.nodePosition.positionInitialized}
+                    // {"positionInitialized", node.nodePosition.positionInitialized}   //25.12.26, pisces 요청사항
                 };
             }
             
@@ -1419,4 +1440,51 @@ double Vda5050Protocol::getDistanceSinceLastNode(IAmr* amr)
     }
     
     return std::hypot(dx, dy);
+}
+
+void Vda5050Protocol::enableLogging(const std::string &path)
+{
+    if (log_file_.is_open()) {
+        log_file_.close();
+    }
+    log_file_.open(path, std::ios::out | std::ios::app);
+    log_enabled_ = log_file_.is_open();
+
+    if (!log_enabled_) {
+        std::cerr << "[Vda5050Protocol] Failed to open log file: "
+                  << path << std::endl;
+    } else {
+        std::cout << "[Vda5050Protocol] VDA5050 logging enabled: "
+                  << path << std::endl;
+    }
+}
+
+void Vda5050Protocol::disableLogging()
+{
+    if (log_file_.is_open()) {
+        log_file_.close();
+    }
+    log_enabled_ = false;
+    std::cout << "[Vda5050Protocol] VDA5050 logging disabled" << std::endl;
+}
+
+void Vda5050Protocol::logMessage(const std::string &direction,
+                                 const std::string &topic,
+                                 const std::string &payload)
+{
+    if (!log_enabled_ || !log_file_.is_open()) {
+        return;
+    }
+
+    // ISO8601 타임스탬프는 기존 헬퍼 재사용
+    const std::string ts = getCurrentTimestampISO8601();
+
+    // 심플 JSON 라인 형태로 남김 (파싱하기 쉽도록)
+    log_file_ << "{"
+              << "\"timestamp\":\"" << ts << "\","
+              << "\"direction\":\"" << direction << "\","
+              << "\"topic\":\"" << topic << "\","
+              << "\"payload\":" << payload   // payload 자체가 JSON 문자열이라고 가정
+              << "}"
+              << std::endl;
 }

@@ -12,6 +12,7 @@
 #include "iprotocol.h"
 #include "yaml_config.h"
 #include "node_edge_info.h"
+#include <fstream>
 
 // Forward declarations
 class IAmr;
@@ -45,6 +46,9 @@ public:
     
     // Order completion check
     void checkOrderCompletion(IAmr* amr) override;
+
+    void enableLogging(const std::string &path);
+    void disableLogging();
 
 private:
     // MQTT callback handler
@@ -124,6 +128,13 @@ private:
     std::vector<EdgeInfo> getUpcomingEdges(IAmr* amr);
     std::vector<ActionInfo> getCurrentActions(IAmr* amr);
     std::vector<ErrorInfo> getSystemErrors(IAmr* amr);
+
+    std::ofstream log_file_;
+    bool log_enabled_ = false;
+
+    void logMessage(const std::string &direction,
+                    const std::string &topic,
+                    const std::string &payload);
     
     // Safety status functions
     bool getEmergencyStopStatus(IAmr* amr);

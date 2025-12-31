@@ -33,7 +33,6 @@ double Amr::getBatteryPercent() const
 void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, const std::vector<NodeInfo>& all_nodes, double wheel_base)
 {
     // target_node 찾기
-    // std::cout << "set edge id : " << edge.edgeId << std::endl;
     const NodeInfo* target_node = nullptr;
     const NodeInfo* start_node = nullptr;
     const NodeInfo* center_node = nullptr;
@@ -72,7 +71,6 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
 
     if(edge.has_turn_center && center_node) 
     {
-        // std::cout<<"has_turn_center : "<< center_node->x << " " << center_node->y << std::endl;
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
@@ -86,7 +84,6 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
     } 
     else 
     {
-        // std::cout<<"has_not_turn_center : " << std::endl;
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,

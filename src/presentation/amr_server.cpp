@@ -62,10 +62,9 @@ void AmrServerApp::run(const std::string& config_path)
                 bool is_charging = false;  // 필요시 충전 상태 로직 구현
                 amr->updateBattery(dt_control, is_charging);
                 
-                // amr->step(dt_control); // 내부적으로 vcu->update(dt_internal) 등 호출됨
                 amr->step(dt_control, other_positions);
 
-                // **[추가]** 노드 도착 이벤트 확인 및 즉시 상태 발행
+                // 노드 도착 이벤트 확인 및 즉시 상태 발행
                 if (amr->needsImmediateStatePublish())
                 {
                     if (idx < manager.getProtocolCount()) 

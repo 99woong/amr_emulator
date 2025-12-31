@@ -12,6 +12,10 @@
 #include "battery_model_simple.h"
 #include <iostream>
 #include <unistd.h>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 
 // 생성자: 여러 AMR 인스턴스 및 관련 객체 생성 후 초기화
 AmrManager::AmrManager(const AmrConfig& config)
@@ -155,6 +159,28 @@ std::unique_ptr<Amr> AmrManager::createSingleAmr(int id, const AmrConfig& config
     return std::make_unique<Amr>(id, std::move(vcu), std::move(battery_model));
 }
 
+static std::string makeLogFilePath(const std::string &log_dir, const std::string &agv_id)
+{
+    using namespace std::chrono;
+    auto now   = system_clock::now();
+    std::time_t now_c = system_clock::to_time_t(now);
+
+    std::tm local_tm;
+#ifdef _WIN32
+    localtime_s(&local_tm, &now_c);
+#else
+    localtime_r(&now_c, &local_tm);
+#endif
+
+    std::ostringstream ts;
+    // YYYYMMDD_HHMMSS
+    ts << std::put_time(&local_tm, "%Y%m%d_%H%M%S");
+
+    std::ostringstream path;
+    path << log_dir << "/vda5050_" << agv_id << "_" << ts.str() << ".log";
+    return path.str();
+}
+
 // 프로토콜 생성 및 초기화
 std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protocol_type, const std::string& server_address, const std::string& agv_id, Amr* amr, const AmrConfig& config)
 {
@@ -164,7 +190,13 @@ std::unique_ptr<IProtocol> AmrManager::createProtocol(const std::string& protoco
         vdaProto->setAgvId(agv_id);
         vdaProto->useDefaultConfig(server_address);
         vdaProto->setAmr(amr);
-        std::cout << "[AmrManager] AMR " << agv_id << " configured for VDA 5050 protocol." << std::endl;
+
+        const std::string log_dir  = "logs";
+        const std::string log_path = makeLogFilePath(log_dir, agv_id);
+        // const std::string log_path = log_dir + "/vda5050_" + agv_id + ".log";
+        vdaProto->enableLogging(log_path);
+
+        std::cout << "[AmrManager] AMR " << agv_id << " configured for VDA 5050 protocol. Log: " << log_path << std::endl;
         return vdaProto;
     }
     else if(protocol_type == "custom_tcp") 
