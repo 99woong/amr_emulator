@@ -160,16 +160,12 @@ void Amr::updateOrder(const std::vector<NodeInfo>& nodes, const std::vector<Edge
 {
     std::cout << "[AMR" << id_ << "] updateOrder called - ORDER UPDATE (Merge)" << std::endl;
     
-    // 현재 진행 중인 edge의 sequenceId 저장
-    int current_edge_sequence = -1;
-    if (cur_edge_idx_ < edges_.size())
-    {
-        current_edge_sequence = edges_[cur_edge_idx_].sequenceId;
-        std::cout << "[AMR" << id_ << "] Currently processing edge with sequenceId: " 
-                  << current_edge_sequence << std::endl;
-    }
+    // VDA5050 Order Update는 기존 경로를 유지하면서 업데이트
+    // 현재는 간단히 setOrder와 동일하게 처리하지만, 
+    // 필요시 더 정교한 Merge 로직을 구현할 수 있음
     
-    // 진행 상황 저장
+    // 현재 진행 상황 저장
+    size_t saved_edge_idx = cur_edge_idx_;
     auto saved_completed_nodes = completed_nodes_;
     auto saved_completed_edges = completed_edges_;
     
@@ -179,100 +175,38 @@ void Amr::updateOrder(const std::vector<NodeInfo>& nodes, const std::vector<Edge
     all_nodes_ = all_nodes;
     wheel_base_ = wheel_base;
     
-    // 새 edges에서 현재 처리 중인 edge 찾기
-    bool found_current_edge = false;
-    for (size_t i = 0; i < edges_.size(); ++i)
+    // 진행 상황 복원 시도
+    // 현재 처리 중인 edge가 새 Order에도 있는지 확인
+    if (saved_edge_idx < edges_.size())
     {
-        if (edges_[i].sequenceId == current_edge_sequence)
-        {
-            cur_edge_idx_ = i;
-            found_current_edge = true;
-            std::cout << "[AMR" << id_ << "] Found current edge in new order at index: " 
-                      << i << " (sequenceId: " << current_edge_sequence << ")" << std::endl;
-            break;
-        }
-    }
-    
-    if (found_current_edge)
-    {
-        // 진행 상황 복원
+        cur_edge_idx_ = saved_edge_idx;
         completed_nodes_ = saved_completed_nodes;
         completed_edges_ = saved_completed_edges;
         
         std::cout << "[AMR" << id_ << "] Order updated. Continuing from edge index: " 
-                  << cur_edge_idx_ << " (" << edges_[cur_edge_idx_].edgeId << ")" << std::endl;
+                  << cur_edge_idx_ << std::endl;
         
-        // VCU 목표는 유지 (이미 주행 중이므로 재설정하지 않음)
-        // 만약 재설정이 필요하다면 주석 해제:
-        // if (vcu_)
-        // {
-        //     const EdgeInfo& edge = edges_[cur_edge_idx_];
-        //     setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
-        // }
+        // VCU 목표 재설정
+        if (cur_edge_idx_ < edges_.size() && vcu_)
+        {
+            const EdgeInfo& edge = edges_[cur_edge_idx_];
+            setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
+        }
     }
-    else if (current_edge_sequence == -1)
+    else
     {
-        // 아직 주행 시작 전 (IDLE 상태에서 Order Update 수신)
-        std::cout << "[AMR" << id_ << "] Order updated before driving started. Starting from beginning." << std::endl;
-        
+        std::cout << "[AMR" << id_ << "] Order updated. Current progress not found in new order. Restarting." << std::endl;
         cur_edge_idx_ = 0;
-        completed_nodes_ = saved_completed_nodes;
-        completed_edges_ = saved_completed_edges;
+        completed_nodes_.clear();
+        completed_edges_.clear();
         
         if (!edges_.empty() && vcu_)
         {
             const EdgeInfo& edge = edges_[cur_edge_idx_];
             setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
-            std::cout << "[AMR" << id_ << "] Set target to first edge: " << edge.edgeId << std::endl;
         }
     }
-    else
-    {
-        // 현재 edge가 새 Order에 없음 - 가장 가까운 edge 찾기
-        std::cout << "[AMR" << id_ << "] WARNING: Current edge (seq=" << current_edge_sequence 
-                  << ") not found in new order!" << std::endl;
-        
-        // 현재 sequenceId보다 큰 첫 번째 edge 찾기
-        bool found_next_edge = false;
-        for (size_t i = 0; i < edges_.size(); ++i)
-        {
-            if (edges_[i].sequenceId > current_edge_sequence)
-            {
-                cur_edge_idx_ = i;
-                found_next_edge = true;
-                std::cout << "[AMR" << id_ << "] Moving to next available edge: " 
-                          << edges_[i].edgeId << " (seq=" << edges_[i].sequenceId << ")" << std::endl;
-                break;
-            }
-        }
-        
-        if (!found_next_edge)
-        {
-            // 새 Order에 더 이상 진행할 edge가 없음
-            std::cout << "[AMR" << id_ << "] No more edges in new order. Order complete." << std::endl;
-            nodes_.clear();
-            edges_.clear();
-            all_nodes_.clear();
-            cur_edge_idx_ = 0;
-            return;
-        }
-        
-        // 새 edge로 VCU 목표 설정
-        completed_nodes_ = saved_completed_nodes;
-        completed_edges_ = saved_completed_edges;
-        
-        if (vcu_)
-        {
-            const EdgeInfo& edge = edges_[cur_edge_idx_];
-            setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
-        }
-    }
-    
-    std::cout << "[AMR" << id_ << "] updateOrder completed. Total edges: " << edges_.size() 
-              << ", Current edge index: " << cur_edge_idx_ << std::endl;
 }
-
-
 
 void Amr::cancelOrder()
 {
@@ -309,9 +243,6 @@ void Amr::cancelOrder()
         std::cout << "[AMR" << id_ << "] Motion stopped at position (" 
                   << current_x << ", " << current_y << ")" << std::endl;
     }
-    
-    //즉시 State 발행 플래그 설정
-    needs_immediate_state_publish_ = true;
     
     std::cout << "[AMR" << id_ << "] Order cancelled - AMR is now IDLE" << std::endl;
 }

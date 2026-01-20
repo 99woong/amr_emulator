@@ -11,13 +11,16 @@
 #include <unordered_set>
 
 
-void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_ptr msg)
+void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_ptr msg) 
 {
     std::cout << "[MQTT] Message arrived on topic: " << msg->get_topic() << std::endl;
+
     // 수신 로그
     if (proto_) 
     {
-        proto_->logMessage("IN", msg->get_topic(), msg->to_string());
+        proto_->logMessage("IN",
+                           msg->get_topic(),
+                           msg->to_string());
     }
 
     if (msg->get_topic() == proto_->order_topic_ || msg->get_topic() == proto_->instant_actions_topic) 
@@ -26,7 +29,7 @@ void Vda5050Protocol::Vda5050MqttCallback::message_arrived(mqtt::const_message_p
     }
 }
 
-Vda5050Protocol::Vda5050Protocol(const AmrConfig& config)
+Vda5050Protocol::Vda5050Protocol(const AmrConfig& config) 
     : running_(false), 
       config_(config),
       amr_(nullptr),
@@ -49,19 +52,19 @@ Vda5050Protocol::~Vda5050Protocol()
     stop();
 }
 
-void Vda5050Protocol::setAmr(IAmr* amr)
+void Vda5050Protocol::setAmr(IAmr* amr) 
 {
     amr_ = amr;
     std::cout << "[Vda5050Protocol] AMR instance set" << std::endl;
 }
 
-void Vda5050Protocol::setAgvId(const std::string& agv_id)
+void Vda5050Protocol::setAgvId(const std::string& agv_id) 
 {
     agv_id_ = agv_id;
     std::cout << "[Vda5050Protocol] AGV ID set to: " << agv_id_ << std::endl;
 }
 
-void Vda5050Protocol::useDefaultConfig(const std::string& server_address)
+void Vda5050Protocol::useDefaultConfig(const std::string& server_address) 
 {
     std::cout << "[Vda5050Protocol] Configuring MQTT server: " << server_address << std::endl;
     mqtt_server_uri_ = server_address;
@@ -84,7 +87,7 @@ void Vda5050Protocol::useDefaultConfig(const std::string& server_address)
     std::cout << "  - Instant Actions: " << instant_actions_topic << std::endl;
 }
 
-void Vda5050Protocol::start()
+void Vda5050Protocol::start() 
 {
     try 
     {
@@ -130,7 +133,7 @@ void Vda5050Protocol::start()
     }
 }
 
-void Vda5050Protocol::stop()
+void Vda5050Protocol::stop() 
 {
     std::cout << "[Vda5050Protocol] Stopping protocol..." << std::endl;
     running_ = false;
@@ -199,137 +202,6 @@ std::string Vda5050Protocol::detectConnection()
 }
 
 // FACTSHEET MESSAGE (factsheet.schema.json)
-// std::string Vda5050Protocol::makeFactsheetMessage()
-// {
-//     nlohmann::json factsheet_json;
-
-//     // Required Header Fields
-//     factsheet_json["headerId"] = factsheet_header_id_++;
-//     factsheet_json["timestamp"] = getCurrentTimestampISO8601();
-//     factsheet_json["version"] = "2.1.0";
-//     factsheet_json["manufacturer"] = "ZenixRobotics";
-//     factsheet_json["serialNumber"] = agv_id_;
-
-//     // typeSpecification (Required)
-//     nlohmann::json typeSpec;
-//     typeSpec["seriesName"] = "ZenixAMR";
-//     typeSpec["agvKinematic"] = "OMNI";
-//     typeSpec["agvClass"] = "CARRIER";
-//     typeSpec["maxLoadMass"] = 100.0;
-//     typeSpec["localizationTypes"] = nlohmann::json::array({"RFID"});
-//     typeSpec["navigationTypes"] = nlohmann::json::array({"AUTONOMOUS"});
-//     typeSpec["seriesDescription"] = "Zenix Autonomous Mobile Robot Series";
-//     factsheet_json["typeSpecification"] = typeSpec;
-
-//     // physicalParameters (Required)
-//     nlohmann::json physicalParams;
-//     physicalParams["speedMin"] = config_.amr_params.min_speed;
-//     physicalParams["speedMax"] = config_.amr_params.max_speed;
-//     physicalParams["accelerationMax"] = config_.amr_params.accelerationMax;
-//     physicalParams["decelerationMax"] = config_.amr_params.decelerationMax;
-//     physicalParams["heightMin"] = config_.amr_params.heightMin;
-//     physicalParams["heightMax"] = config_.amr_params.heightMax;
-//     physicalParams["width"] = config_.amr_params.width;
-//     physicalParams["length"] = config_.amr_params.length;
-//     factsheet_json["physicalParameters"] = physicalParams;
-
-//     // protocolLimits (Required)
-//     nlohmann::json protocolLimits;
-//     nlohmann::json maxStringLens;
-//     maxStringLens["msgLen"] = 10000;
-//     maxStringLens["topicSerialLen"] = 256;
-//     maxStringLens["topicElemLen"] = 256;
-//     maxStringLens["idLen"] = 256;
-//     maxStringLens["idNumericalOnly"] = false;
-//     maxStringLens["enumLen"] = 256;
-//     maxStringLens["loadIdLen"] = 256;
-//     protocolLimits["maxStringLens"] = maxStringLens;
-//     protocolLimits["maxArrayLens"] = nlohmann::json::object();
-    
-//     nlohmann::json timing;
-//     timing["minOrderInterval"] = 1.0;
-//     timing["minStateInterval"] = 1.0;
-//     timing["defaultStateInterval"] = 30.0;
-//     timing["visualizationInterval"] = 0.1;
-//     protocolLimits["timing"] = timing;
-//     factsheet_json["protocolLimits"] = protocolLimits;
-
-//     // protocolFeatures (Required)
-//     nlohmann::json protocolFeatures;
-//     nlohmann::json optionalParameters = nlohmann::json::array();
-//     optionalParameters.push_back({
-//         {"parameter", "trajectory"},
-//         {"support", "SUPPORTED"},
-//         {"description", "NURBS trajectory support"}
-//     });
-//     protocolFeatures["optionalParameters"] = optionalParameters;
-    
-//     nlohmann::json agvActions = nlohmann::json::array();
-//     nlohmann::json pickAction;
-//     pickAction["actionType"] = "pick";
-//     pickAction["actionDescription"] = "Pick up a load";
-//     pickAction["actionScopes"] = nlohmann::json::array({"NODE"});
-    
-//     nlohmann::json pickParams = nlohmann::json::array();
-//     pickParams.push_back({
-//         {"key", "stationType"},
-//         {"valueDataType", "STRING"},
-//         {"description", "Type of station"},
-//         {"isOptional", false}
-//     });
-//     pickAction["actionParameters"] = pickParams;
-//     pickAction["resultDescription"] = "Load picked successfully";
-//     agvActions.push_back(pickAction);
-//     protocolFeatures["agvActions"] = agvActions;
-//     factsheet_json["protocolFeatures"] = protocolFeatures;
-
-//     // agvGeometry (Required)
-//     nlohmann::json agvGeometry;
-//     nlohmann::json envelopes2d = nlohmann::json::array();
-//     nlohmann::json envelope;
-//     envelope["set"] = "default";
-//     nlohmann::json polygonPoints = nlohmann::json::array();
-//     polygonPoints.push_back({{"x", -0.5}, {"y", -0.4}});
-//     polygonPoints.push_back({{"x", 0.5}, {"y", -0.4}});
-//     polygonPoints.push_back({{"x", 0.5}, {"y", 0.4}});
-//     polygonPoints.push_back({{"x", -0.5}, {"y", 0.4}});
-//     envelope["polygonPoints"] = polygonPoints;
-//     envelope["description"] = "Base footprint";
-//     envelopes2d.push_back(envelope);
-//     agvGeometry["envelopes2d"] = envelopes2d;
-//     agvGeometry["envelopes3d"] = nlohmann::json::array();
-//     factsheet_json["agvGeometry"] = agvGeometry;
-
-//     // loadSpecification (Required)
-//     nlohmann::json loadSpec;
-//     loadSpec["loadPositions"] = nlohmann::json::array({"top"});
-    
-//     nlohmann::json loadSets = nlohmann::json::array();
-//     nlohmann::json loadSet;
-//     loadSet["setName"] = "europalette";
-//     loadSet["loadType"] = "EPAL";
-//     loadSet["loadPositions"] = nlohmann::json::array({"top"});
-//     loadSet["boundingBoxReference"] = {
-//         {"x", 0.0},
-//         {"y", 0.0},
-//         {"z", 0.0},
-//         {"theta", 0}
-//     };
-//     loadSet["loadDimensions"] = {
-//         {"length", 1.2},
-//         {"width", 0.8},
-//         {"height", 0.15}
-//     };
-//     loadSet["maxWeight"] = 100.0;
-//     loadSet["minLoadhandlingHeight"] = 0.0;
-//     loadSet["maxLoadhandlingHeight"] = 1.5;
-//     loadSets.push_back(loadSet);
-//     loadSpec["loadSets"] = loadSets;
-//     factsheet_json["loadSpecification"] = loadSpec;
-
-//     return factsheet_json.dump();
-// }
-
 std::string Vda5050Protocol::makeFactsheetMessage()
 {
     nlohmann::json factsheet_json;
@@ -461,639 +333,7 @@ std::string Vda5050Protocol::makeFactsheetMessage()
     return factsheet_json.dump();
 }
 
-
 // INSTANT ACTIONS HANDLER
-
-// ============================================================================
-// Order Merge Logic
-// ============================================================================
-
-bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
-{
-    std::cout << "[Vda5050Protocol] ===== Order Merge Start =====" << std::endl;
-    
-    // 1. Extract order information
-    std::string new_order_id = order_json.value("orderId", "");
-    int new_order_update_id = order_json.value("orderUpdateId", 0);
-    
-    std::cout << "[Vda5050Protocol] Received Order:" << std::endl;
-    std::cout << "  - orderId: " << new_order_id << std::endl;
-    std::cout << "  - orderUpdateId: " << new_order_update_id << std::endl;
-    std::cout << "[Vda5050Protocol] Current Order:" << std::endl;
-    std::cout << "  - orderId: " << current_order_id_ << std::endl;
-    std::cout << "  - orderUpdateId: " << current_order_update_id_ << std::endl;
-    
-    // 2. Validate order
-    std::string error_type, error_desc;
-    if (!validateOrder(order_json, error_type, error_desc))
-    {
-        std::cerr << "[Vda5050Protocol] Order validation failed: " << error_desc << std::endl;
-        publishOrderRejectionError(error_type, error_desc);
-        return false;
-    }
-    
-    // ========================================================================
-    // Cancel Order 처리 (nodes=[], edges=[])
-    // ========================================================================
-    auto nodes_json = order_json["nodes"];
-    auto edges_json = order_json["edges"];
-    
-    if (nodes_json.empty() && edges_json.empty())
-    {
-        std::cout << "[Vda5050Protocol] ===== ORDER CANCEL DETECTED =====" << std::endl;
-        std::cout << "[Vda5050Protocol] Empty nodes and edges - Cancelling order" << std::endl;
-        
-        if (!current_order_id_.empty())
-        {
-            std::cout << "[Vda5050Protocol] Cancelling current order: " 
-                      << current_order_id_ << std::endl;
-        }
-        
-        // 1. AMR Cancel 처리
-        if (amr_)
-        {
-            amr_->cancelOrder();
-        }
-        
-        // 2. Protocol 상태 초기화
-        current_order_id_ = "";
-        current_order_update_id_ = 0;
-        current_zone_set_id_ = "";
-        order_active_ = false;
-        
-        // 3. 내부 데이터 클리어
-        received_nodes_.clear();
-        received_edges_.clear();
-        ordered_nodes_.clear();
-        node_by_sequence_.clear();
-        edge_by_sequence_.clear();
-        
-        // 4. 즉시 State 발행 (매우 중요!)
-        std::cout << "[Vda5050Protocol] Publishing IDLE state..." << std::endl;
-        publishStateMessage(amr_);
-        
-        std::cout << "[Vda5050Protocol] Order cancelled successfully - AGV is IDLE" << std::endl;
-        std::cout << "[Vda5050Protocol] ===== Order Merge End =====" << std::endl;
-        
-        return true;
-    }
-    // ========================================================================
-        
-    // 3. Determine if this is a new order or an update
-    bool is_new_order = (new_order_id != current_order_id_);
-    bool is_update = (!is_new_order && new_order_update_id > current_order_update_id_);
-    
-    if (is_new_order)
-    {
-        std::cout << "[Vda5050Protocol] NEW ORDER detected (orderId changed)" << std::endl;
-        
-        // Cancel existing order
-        if (!current_order_id_.empty())
-        {
-            std::cout << "[Vda5050Protocol] Cancelling previous order: " << current_order_id_ << std::endl;
-            if (amr_)
-            {
-                amr_->cancelOrder();
-            }
-        }
-        
-        // Reset order tracking
-        current_order_id_ = new_order_id;
-        current_order_update_id_ = new_order_update_id;
-        current_zone_set_id_ = order_json.value("zoneSetId", "");
-        
-        received_nodes_.clear();
-        received_edges_.clear();
-        node_by_sequence_.clear();
-        edge_by_sequence_.clear();
-        
-        // Parse new order
-        parseOrderNodes(order_json["nodes"]);
-        parseOrderEdges(order_json["edges"]);
-        
-        // Validate start node position (strict)
-        if (!received_nodes_.empty() && amr_)
-        {
-            double cur_x = 0.0, cur_y = 0.0, cur_theta = 0.0;
-            amr_->getVcu()->getEstimatedPose(cur_x, cur_y, cur_theta);
-            
-            if (!validateStartNodePosition(received_nodes_[0], cur_x, cur_y, false, error_desc))
-            {
-                std::cerr << "[Vda5050Protocol] Start node validation failed: " << error_desc << std::endl;
-                publishOrderRejectionError("noRouteError", error_desc);
-                return false;
-            }
-        }
-        
-        // Send to AMR
-        if (amr_)
-        {
-            std::vector<NodeInfo> all_nodes_for_amr = received_nodes_;
-            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
-        }
-        
-        order_active_ = true;
-        
-        // Publish state immediately
-        publishStateMessage(amr_);
-        
-        std::cout << "[Vda5050Protocol] New order processed successfully" << std::endl;
-        return true;
-    }
-    else if (is_update)
-    {
-        std::cout << "[Vda5050Protocol] ORDER UPDATE detected" << std::endl;
-        std::cout << "  - Merging update " << new_order_update_id 
-                  << " into existing order " << current_order_id_ << std::endl;
-        
-        // Update orderUpdateId IMMEDIATELY (before any processing)
-        current_order_update_id_ = new_order_update_id;
-        current_zone_set_id_ = order_json.value("zoneSetId", "");
-        
-        // Publish state immediately to acknowledge update
-        publishStateMessage(amr_);
-        
-        // Parse new nodes and edges from update
-        std::vector<NodeInfo> update_nodes;
-        std::vector<EdgeInfo> update_edges;
-        
-        for (const auto& node_json : order_json["nodes"])
-        {
-            NodeInfo node;
-            node.nodeId = node_json.value("nodeId", "");
-            node.sequenceId = node_json.value("sequenceId", 0);
-            node.nodeDescription = node_json.value("nodeDescription", "");
-            node.released = node_json.value("released", true);
-            
-            if (node_json.contains("nodePosition"))
-            {
-                node.hasNodePosition = true;
-                const auto& pos = node_json["nodePosition"];
-                node.nodePosition.x = pos.value("x", 0.0);
-                node.nodePosition.y = pos.value("y", 0.0);
-                node.x = node.nodePosition.x;
-                node.y = node.nodePosition.y;
-                
-                if (pos.contains("theta"))
-                {
-                    node.nodePosition.hasTheta = true;
-                    node.nodePosition.theta = pos.value("theta", 0.0);
-                }
-            }
-            
-            // Parse actions
-            if (node_json.contains("actions") && node_json["actions"].is_array())
-            {
-                for (const auto& action_json : node_json["actions"])
-                {
-                    Action action;
-                    action.actionId = action_json.value("actionId", "");
-                    action.actionType = action_json.value("actionType", "");
-                    action.actionDescription = action_json.value("actionDescription", "");
-                    action.blockingType = action_json.value("blockingType", "NONE");
-                    
-                    if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-                    {
-                        for (const auto& param_json : action_json["actionParameters"])
-                        {
-                            ActionParameter param;
-                            param.key = param_json.value("key", "");
-                            param.value = param_json["value"];
-                            action.actionParameters.push_back(param);
-                        }
-                    }
-                    
-                    node.actions.push_back(action);
-                }
-            }
-            
-            update_nodes.push_back(node);
-        }
-        
-        for (const auto& edge_json : order_json["edges"])
-        {
-            EdgeInfo edge;
-            edge.edgeId = edge_json.value("edgeId", "");
-            edge.sequenceId = edge_json.value("sequenceId", 0);
-            edge.edgeDescription = edge_json.value("edgeDescription", "");
-            edge.released = edge_json.value("released", true);
-            edge.startNodeId = edge_json.value("startNodeId", "");
-            edge.endNodeId = edge_json.value("endNodeId", "");
-            
-            if (edge_json.contains("maxSpeed"))
-            {
-                edge.hasMaxSpeed = true;
-                edge.maxSpeed = edge_json.value("maxSpeed", 1.0);
-            }
-            else
-            {
-                edge.maxSpeed = 1.0;
-            }
-            
-            // Parse actions
-            if (edge_json.contains("actions") && edge_json["actions"].is_array())
-            {
-                for (const auto& action_json : edge_json["actions"])
-                {
-                    Action action;
-                    action.actionId = action_json.value("actionId", "");
-                    action.actionType = action_json.value("actionType", "");
-                    action.actionDescription = action_json.value("actionDescription", "");
-                    action.blockingType = action_json.value("blockingType", "NONE");
-                    
-                    if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-                    {
-                        for (const auto& param_json : action_json["actionParameters"])
-                        {
-                            ActionParameter param;
-                            param.key = param_json.value("key", "");
-                            param.value = param_json["value"];
-                            action.actionParameters.push_back(param);
-                        }
-                    }
-                    
-                    edge.actions.push_back(action);
-                }
-            }
-            
-            update_edges.push_back(edge);
-        }
-        
-        if (update_nodes.empty())
-        {
-            std::cerr << "[Vda5050Protocol] Update has no nodes" << std::endl;
-            return false;
-        }
-        
-        // Find the first sequenceId in the update
-        int first_update_seq = update_nodes[0].sequenceId;
-        
-        std::cout << "[Vda5050Protocol] Update starts at sequenceId: " << first_update_seq << std::endl;
-        std::cout << "[Vda5050Protocol] Current path has " << received_nodes_.size() << " nodes" << std::endl;
-        
-        // Validate that first node of update exists in current path (relaxed validation)
-        bool first_node_exists = false;
-        for (const auto& existing_node : received_nodes_)
-        {
-            if (existing_node.sequenceId == first_update_seq)
-            {
-                first_node_exists = true;
-                break;
-            }
-        }
-        
-        if (!first_node_exists && amr_)
-        {
-            // First node doesn't exist - check if it's near current position
-            double cur_x = 0.0, cur_y = 0.0, cur_theta = 0.0;
-            amr_->getVcu()->getEstimatedPose(cur_x, cur_y, cur_theta);
-            
-            std::string nearest_node = findNearestNodeInCurrentPath(cur_x, cur_y);
-            if (!nearest_node.empty())
-            {
-                std::cout << "[Vda5050Protocol] First update node not in path, but AGV is near node: " 
-                          << nearest_node << ". Accepting update." << std::endl;
-            }
-            else
-            {
-                std::cerr << "[Vda5050Protocol] Warning: First update node sequenceId " << first_update_seq
-                          << " not found in current path, and AGV not near any known node" << std::endl;
-            }
-        }
-        
-        // Remove all nodes/edges with sequenceId >= first_update_seq
-        auto node_it = received_nodes_.begin();
-        while (node_it != received_nodes_.end())
-        {
-            if (node_it->sequenceId >= first_update_seq)
-            {
-                std::cout << "[Vda5050Protocol] Removing old node: sequenceId=" << node_it->sequenceId 
-                          << ", nodeId=" << node_it->nodeId << std::endl;
-                node_by_sequence_.erase(node_it->sequenceId);
-                node_it = received_nodes_.erase(node_it);
-            }
-            else
-            {
-                ++node_it;
-            }
-        }
-        
-        auto edge_it = received_edges_.begin();
-        while (edge_it != received_edges_.end())
-        {
-            if (edge_it->sequenceId >= first_update_seq)
-            {
-                std::cout << "[Vda5050Protocol] Removing old edge: sequenceId=" << edge_it->sequenceId 
-                          << ", edgeId=" << edge_it->edgeId << std::endl;
-                edge_by_sequence_.erase(edge_it->sequenceId);
-                edge_it = received_edges_.erase(edge_it);
-            }
-            else
-            {
-                ++edge_it;
-            }
-        }
-        
-        // Append new nodes and edges
-        for (const auto& node : update_nodes)
-        {
-            received_nodes_.push_back(node);
-            node_by_sequence_[node.sequenceId] = node;
-            std::cout << "[Vda5050Protocol] Added new node: sequenceId=" << node.sequenceId 
-                      << ", nodeId=" << node.nodeId << std::endl;
-        }
-        
-        for (const auto& edge : update_edges)
-        {
-            received_edges_.push_back(edge);
-            edge_by_sequence_[edge.sequenceId] = edge;
-            std::cout << "[Vda5050Protocol] Added new edge: sequenceId=" << edge.sequenceId 
-                      << ", edgeId=" << edge.edgeId << std::endl;
-        }
-        
-        std::cout << "[Vda5050Protocol] Merged path now has " << received_nodes_.size() << " nodes, "
-                  << received_edges_.size() << " edges" << std::endl;
-        
-        // Send updated order to AMR (use updateOrder for Order Updates)
-        if (amr_)
-        {
-            std::vector<NodeInfo> all_nodes_for_amr = received_nodes_;
-            amr_->updateOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
-            std::cout << "[Vda5050Protocol] Called updateOrder() - AGV will continue from current position" << std::endl;
-        }
-        
-        // Publish state again after merge
-        publishStateMessage(amr_);
-        
-        std::cout << "[Vda5050Protocol] Order update merged successfully" << std::endl;
-        return true;
-    }
-    else
-    {
-        std::cout << "[Vda5050Protocol] Ignoring duplicate or old order" << std::endl;
-        std::cout << "  - Same orderId, but orderUpdateId not increasing (" 
-                  << new_order_update_id << " <= " << current_order_update_id_ << ")" << std::endl;
-        return false;
-    }
-}
-
-void Vda5050Protocol::parseOrderNodes(const nlohmann::json& nodes_json)
-{
-    for (const auto& node_json : nodes_json)
-    {
-        NodeInfo node;
-        node.nodeId = node_json.value("nodeId", "");
-        node.sequenceId = node_json.value("sequenceId", 0);
-        node.nodeDescription = node_json.value("nodeDescription", "");
-        node.released = node_json.value("released", true);
-        
-        if (node_json.contains("nodePosition"))
-        {
-            node.hasNodePosition = true;
-            const auto& pos = node_json["nodePosition"];
-            node.nodePosition.x = pos.value("x", 0.0);
-            node.nodePosition.y = pos.value("y", 0.0);
-            node.x = node.nodePosition.x;
-            node.y = node.nodePosition.y;
-            
-            if (pos.contains("theta"))
-            {
-                node.nodePosition.hasTheta = true;
-                node.nodePosition.theta = pos.value("theta", 0.0);
-            }
-        }
-        
-        // Parse actions
-        if (node_json.contains("actions") && node_json["actions"].is_array())
-        {
-            for (const auto& action_json : node_json["actions"])
-            {
-                Action action;
-                action.actionId = action_json.value("actionId", "");
-                action.actionType = action_json.value("actionType", "");
-                action.actionDescription = action_json.value("actionDescription", "");
-                action.blockingType = action_json.value("blockingType", "NONE");
-                
-                if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-                {
-                    for (const auto& param_json : action_json["actionParameters"])
-                    {
-                        ActionParameter param;
-                        param.key = param_json.value("key", "");
-                        param.value = param_json["value"];
-                        action.actionParameters.push_back(param);
-                    }
-                }
-                
-                node.actions.push_back(action);
-            }
-        }
-        
-        received_nodes_.push_back(node);
-        node_by_sequence_[node.sequenceId] = node;
-    }
-}
-
-void Vda5050Protocol::parseOrderEdges(const nlohmann::json& edges_json)
-{
-    for (const auto& edge_json : edges_json)
-    {
-        EdgeInfo edge;
-        edge.edgeId = edge_json.value("edgeId", "");
-        edge.sequenceId = edge_json.value("sequenceId", 0);
-        edge.edgeDescription = edge_json.value("edgeDescription", "");
-        edge.released = edge_json.value("released", true);
-        edge.startNodeId = edge_json.value("startNodeId", "");
-        edge.endNodeId = edge_json.value("endNodeId", "");
-        
-        if (edge_json.contains("maxSpeed"))
-        {
-            edge.hasMaxSpeed = true;
-            edge.maxSpeed = edge_json.value("maxSpeed", 1.0);
-        }
-        else
-        {
-            edge.maxSpeed = 1.0;
-        }
-        
-        // Parse actions
-        if (edge_json.contains("actions") && edge_json["actions"].is_array())
-        {
-            for (const auto& action_json : edge_json["actions"])
-            {
-                Action action;
-                action.actionId = action_json.value("actionId", "");
-                action.actionType = action_json.value("actionType", "");
-                action.actionDescription = action_json.value("actionDescription", "");
-                action.blockingType = action_json.value("blockingType", "NONE");
-                
-                if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
-                {
-                    for (const auto& param_json : action_json["actionParameters"])
-                    {
-                        ActionParameter param;
-                        param.key = param_json.value("key", "");
-                        param.value = param_json["value"];
-                        action.actionParameters.push_back(param);
-                    }
-                }
-                
-                edge.actions.push_back(action);
-            }
-        }
-        
-        received_edges_.push_back(edge);
-        edge_by_sequence_[edge.sequenceId] = edge;
-    }
-}
-
-bool Vda5050Protocol::validateOrder(const nlohmann::json& order_json, std::string& error_type, std::string& error_desc)
-{
-    // Check required fields
-    if (!order_json.contains("orderId"))
-    {
-        error_type = "orderError";
-        error_desc = "Missing required field: orderId";
-        return false;
-    }
-    
-    if (!order_json.contains("orderUpdateId"))
-    {
-        error_type = "orderError";
-        error_desc = "Missing required field: orderUpdateId";
-        return false;
-    }
-    
-    if (!order_json.contains("nodes") || !order_json["nodes"].is_array())
-    {
-        error_type = "orderError";
-        error_desc = "Missing or invalid nodes array";
-        return false;
-    }
-    
-    if (!order_json.contains("edges") || !order_json["edges"].is_array())
-    {
-        error_type = "orderError";
-        error_desc = "Missing or invalid edges array";
-        return false;
-    }
-  
-    // VDA5050 표준: Node는 짝수(0,2,4...), Edge는 홀수(1,3,5...)
-    const auto& nodes = order_json["nodes"];
-    const auto& edges = order_json["edges"];
-    
-    // Node sequenceId 검증: 짝수여야 함
-    for (size_t i = 0; i < nodes.size(); ++i)
-    {
-        if (!nodes[i].contains("sequenceId"))
-        {
-            error_type = "orderError";
-            error_desc = "Node missing sequenceId";
-            return false;
-        }
-        
-        int seq = nodes[i]["sequenceId"].get<int>();
-        if (seq % 2 != 0)  // 홀수이면 에러
-        {
-            error_type = "orderError";
-            error_desc = "Node has odd sequenceId (should be even): " + std::to_string(seq);
-            return false;
-        }
-    }
-    
-    // Edge sequenceId 검증: 홀수여야 함
-    for (size_t i = 0; i < edges.size(); ++i)
-    {
-        if (!edges[i].contains("sequenceId"))
-        {
-            error_type = "orderError";
-            error_desc = "Edge missing sequenceId";
-            return false;
-        }
-        
-        int seq = edges[i]["sequenceId"].get<int>();
-        if (seq % 2 == 0)  // 짝수이면 에러
-        {
-            error_type = "orderError";
-            error_desc = "Edge has even sequenceId (should be odd): " + std::to_string(seq);
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-bool Vda5050Protocol::validateStartNodePosition(const NodeInfo& start_node, double current_x, double current_y, 
-                                                bool is_update_order, std::string& error_desc)
-{
-    if (!start_node.hasNodePosition)
-    {
-        // No position to validate
-        return true;
-    }
-    
-    double dx = start_node.nodePosition.x - current_x;
-    double dy = start_node.nodePosition.y - current_y;
-    double distance = std::sqrt(dx*dx + dy*dy);
-    
-    // For new orders: strict validation
-    if (!is_update_order)
-    {
-        double allowedDeviationXY = start_node.nodePosition.hasAllowedDeviationXY ? 
-                                    start_node.nodePosition.allowedDeviationXY : 0.5;
-        
-        if (distance > allowedDeviationXY)
-        {
-            error_desc = "noRouteError: START_NODE_TOO_FAR. Distance: " + std::to_string(distance) + 
-                        " m, Allowed: " + std::to_string(allowedDeviationXY) + " m";
-            return false;
-        }
-    }
-    else
-    {
-        // For update orders: relaxed validation
-        // Check if node is in existing path
-        std::string nearest = findNearestNodeInCurrentPath(current_x, current_y);
-        if (nearest.empty())
-        {
-            // Not near any known node - apply strict check
-            double allowedDeviationXY = 1.0;  // More lenient for updates
-            if (distance > allowedDeviationXY)
-            {
-                error_desc = "noRouteError: Update start node too far. Distance: " + std::to_string(distance) + " m";
-                return false;
-            }
-        }
-        // If near a known node, accept the update
-    }
-    
-    return true;
-}
-
-std::string Vda5050Protocol::findNearestNodeInCurrentPath(double current_x, double current_y)
-{
-    std::string nearest_id;
-    double min_distance = 1.0;  // 1m threshold
-    
-    for (const auto& node : received_nodes_)
-    {
-        if (!node.hasNodePosition)
-            continue;
-        
-        double dx = node.nodePosition.x - current_x;
-        double dy = node.nodePosition.y - current_y;
-        double distance = std::sqrt(dx*dx + dy*dy);
-        
-        if (distance < min_distance)
-        {
-            min_distance = distance;
-            nearest_id = node.nodeId;
-        }
-    }
-    
-    return nearest_id;
-}
-
 void Vda5050Protocol::handleInstantAction(const nlohmann::json& instant_action_json)
 {
     try
@@ -1178,12 +418,15 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
 
     try 
     {
+        std::cout << "[Vda5050Protocol] Received message: " << msg << std::endl;
+
         auto json_msg = nlohmann::json::parse(msg);
 
         // Check if this is an InstantActions message
         if (json_msg.contains("actions") && json_msg["actions"].is_array())
         {
-            std::cout << "[Vda5050Protocol] InstantActions received" << std::endl;      
+            std::cout << "[Vda5050Protocol] InstantActions received. Processing " 
+                      << json_msg["actions"].size() << " action(s)." << std::endl;      
                 
             for (const auto& action : json_msg["actions"])
             {
@@ -1199,27 +442,274 @@ void Vda5050Protocol::handleMessage(const std::string& msg, IAmr* amr)
             return;
         }
 
-        // Order Merge 로직 호출
-        bool merge_success = mergeOrder(json_msg);
-        
-        if (!merge_success)
+        // Extract order information
+        if (json_msg.contains("orderId"))
         {
-            std::cerr << "[Vda5050Protocol] Order merge failed" << std::endl;
+            current_order_id_ = json_msg["orderId"].get<std::string>();
+        }
+        if (json_msg.contains("orderUpdateId"))
+        {
+            current_order_update_id_ = json_msg["orderUpdateId"].get<int>();
+        }
+        if (json_msg.contains("zoneSetId") && !json_msg["zoneSetId"].is_null())
+        {
+            current_zone_set_id_ = json_msg["zoneSetId"].get<std::string>();
+        }
+        else
+        {
+            current_zone_set_id_ = "";
+        }
+
+        std::cout << "[Vda5050Protocol] Processing order: " << current_order_id_ 
+                  << " (updateId: " << current_order_update_id_ << ")" << std::endl;
+
+        // Clear storage
+        received_nodes_.clear();
+        received_edges_.clear();
+        ordered_nodes_.clear();
+
+        std::unordered_map<std::string, NodeInfo> node_map;
+
+        // Parse nodes and store in map
+        for (const auto& node : json_msg["nodes"])
+        {
+            NodeInfo n;
+            n.nodeId = node.value("nodeId", "");
+            n.sequenceId = node.value("sequenceId", 0);
+            n.released = node.value("released", false);
+            
+            if (node.contains("nodePosition") && !node["nodePosition"].is_null())
+            {
+                n.x = node["nodePosition"].value("x", 0.0);
+                n.y = node["nodePosition"].value("y", 0.0);
+                n.hasNodePosition = true;
+                n.nodePosition.x = n.x;
+                n.nodePosition.y = n.y;
+                n.nodePosition.mapId = node["nodePosition"].value("mapId", "default_map");
+                n.nodePosition.theta = node["nodePosition"].value("theta", 0.0);
+                n.nodePosition.positionInitialized = true;
+            }
+            
+            if (node.contains("actions") && node["actions"].is_array())
+            {
+                for (const auto& action_json : node["actions"])
+                {
+                    Action action;
+                    action.actionId = action_json.value("actionId", "");
+                    action.actionType = action_json.value("actionType", "");
+                    action.actionDescription = action_json.value("actionDescription", "");
+                    action.blockingType = action_json.value("blockingType", "HARD");
+                    
+                    if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
+                    {
+                        for (const auto& param_json : action_json["actionParameters"])
+                        {
+                            ActionParameter param;
+                            param.key = param_json.value("key", "");
+                            param.value = param_json.value("value", nlohmann::json());
+                            action.actionParameters.push_back(param);
+                        }
+                    }
+                    
+                    n.actions.push_back(action);
+                }
+            }
+            
+            node_map[n.nodeId] = n;
+            received_nodes_.push_back(n);
+        }
+
+        // Parse edges
+        std::vector<EdgeInfo> edges;
+        for (const auto& edge : json_msg["edges"])
+        {
+            EdgeInfo e;
+            e.edgeId = edge.value("edgeId", "");
+            e.sequenceId = edge.value("sequenceId", 0);
+            e.startNodeId = edge.value("startNodeId", "");
+            e.endNodeId = edge.value("endNodeId", "");
+            e.released = edge.value("released", false);
+            e.centerNodeId = edge.value("centerNodeId", "");            
+            
+            if (edge.contains("maxSpeed") && !edge["maxSpeed"].is_null())
+            {
+                e.maxSpeed = edge["maxSpeed"].get<double>();
+            }
+            
+            if (!e.centerNodeId.empty())
+            {
+                e.has_turn_center = true;
+            }
+            
+            if (edge.contains("actions") && edge["actions"].is_array())
+            {
+                for (const auto& action_json : edge["actions"])
+                {
+                    Action action;
+                    action.actionId = action_json.value("actionId", "");
+                    action.actionType = action_json.value("actionType", "");
+                    action.actionDescription = action_json.value("actionDescription", "");
+                    action.blockingType = action_json.value("blockingType", "HARD");
+                    
+                    if (action_json.contains("actionParameters") && action_json["actionParameters"].is_array())
+                    {
+                        for (const auto& param_json : action_json["actionParameters"])
+                        {
+                            ActionParameter param;
+                            param.key = param_json.value("key", "");
+                            param.value = param_json.value("value", nlohmann::json());
+                            action.actionParameters.push_back(param);
+                        }
+                    }
+                    
+                    e.actions.push_back(action);
+                }
+            }            
+            
+            // Parse trajectory if present
+            if (edge.contains("trajectory") && !edge["trajectory"].is_null())
+            {
+                e.hasTrajectory = true;
+                e.trajectory.degree = edge["trajectory"].value("degree", 3);
+                e.trajectory.knotVector = edge["trajectory"].value("knotVector", std::vector<double>());
+                
+                if (edge["trajectory"].contains("controlPoints") && edge["trajectory"]["controlPoints"].is_array())
+                {
+                    for (const auto& cp_json : edge["trajectory"]["controlPoints"])
+                    {
+                        ControlPoint cp;
+                        cp.x = cp_json.value("x", 0.0);
+                        cp.y = cp_json.value("y", 0.0);
+                        if (cp_json.contains("weight") && !cp_json["weight"].is_null())
+                        {
+                            cp.weight = cp_json["weight"].get<double>();
+                            cp.hasWeight = true;
+                        }
+                        e.trajectory.controlPoints.push_back(cp);
+                    }
+                }
+            }
+            
+            edges.push_back(e);
+            received_edges_.push_back(e);
+        }
+
+        // Sort edges by sequence ID
+        std::sort(edges.begin(), edges.end(), [](const EdgeInfo& a, const EdgeInfo& b)
+        {
+            return a.sequenceId < b.sequenceId;
+        });
+
+        if (edges.empty())
+        {
+            std::cerr << "[Vda5050Protocol] Order has no edges" << std::endl;
+            publishOrderRejectionError("ORDER_NO_EDGES", "Order contains no edges for driving");
             return;
         }
         
-        std::cout << "[Vda5050Protocol] Order successfully processed" << std::endl;
-    }
+        // 에지 순서로 노드 리스트 생성 (순환 경로 지원)
+        std::string first_node_id = edges[0].startNodeId;
+        
+        if (node_map.find(first_node_id) == node_map.end())
+        {
+            std::cerr << "[Vda5050Protocol] Start node not found: " << first_node_id << std::endl;
+            publishOrderRejectionError("START_NODE_NOT_FOUND", "Start node " + first_node_id + " not found in order");
+            return;
+        }
+        
+        const NodeInfo& start_node = node_map[first_node_id];
+        
+        // 에지 순서대로 endNode만 추가 (startNode 제외)
+        // 순환 경로의 경우, 마지막 에지의 endNode가 첫 번째 startNode와 같을 수 있음
+        for (const auto& edge : edges)
+        {
+            if (node_map.find(edge.endNodeId) == node_map.end())
+            {
+                std::cerr << "[Vda5050Protocol] End node not found: " << edge.endNodeId << std::endl;
+                publishOrderRejectionError("END_NODE_NOT_FOUND", "End node " + edge.endNodeId + " not found in order");
+                return;
+            }
+            
+            std::cout << "[Vda5050Protocol] Adding endNode to ordered_nodes_: " << edge.endNodeId << std::endl;
+            ordered_nodes_.push_back(node_map[edge.endNodeId]);
+        }
+
+        std::cout << "[Vda5050Protocol] Total nodes in ordered_nodes_: " << ordered_nodes_.size() << std::endl;
+        std::cout << "[Vda5050Protocol] Start node (will be marked as completed): " << start_node.nodeId << std::endl;
+
+        // Start node position validation
+        if (!start_node.hasNodePosition)
+        {
+            std::cerr << "[Vda5050Protocol] Start node has no position information" << std::endl;
+            publishOrderRejectionError("START_NODE_NO_POSITION", "Start node missing position");
+            return;
+        }
+
+        // Get current vehicle position
+        double current_x = 0.0, current_y = 0.0, current_theta = 0.0;
+        amr->getVcu()->getEstimatedPose(current_x, current_y, current_theta);
+
+        // Calculate distance to start node
+        double dx = start_node.nodePosition.x - current_x;
+        double dy = start_node.nodePosition.y - current_y;
+        double distance_to_start = std::hypot(dx, dy);
+
+        std::cout << "[Vda5050Protocol] Distance to start node '" << start_node.nodeId 
+                  << "': " << distance_to_start << "m (current: " << current_x << ", " << current_y 
+                  << " | start: " << start_node.nodePosition.x << ", " << start_node.nodePosition.y << ")" 
+                  << std::endl;
+
+        constexpr double MAX_START_NODE_DISTANCE = 1.0;
+
+        if (distance_to_start > MAX_START_NODE_DISTANCE)
+        {
+            std::cerr << "[Vda5050Protocol] Start node too far from current position: " 
+                      << distance_to_start << "m (max: " << MAX_START_NODE_DISTANCE << "m)" << std::endl;
+            
+            std::ostringstream error_msg;
+            error_msg << "Start node '" << start_node.nodeId << "' is " 
+                      << distance_to_start << "m away from current position (max: " 
+                      << MAX_START_NODE_DISTANCE << "m)";
+            
+            publishOrderRejectionError("START_NODE_TOO_FAR", error_msg.str());
+            return;
+        }
+
+        std::cout << "[Vda5050Protocol] Start node within acceptable range (" 
+                  << distance_to_start << "m). Marking as completed." << std::endl;
+
+        // Set order active flag
+        order_active_ = true;
+        
+        // Convert node_map to vector for all_nodes
+        std::vector<NodeInfo> all_nodes;
+        for (const auto& pair : node_map)
+        {
+            all_nodes.push_back(pair.second);
+        }
+        
+        // Send order to AMR
+        amr->setOrder(ordered_nodes_, edges, all_nodes, 15.0);
+
+        // Mark start node as completed
+        amr->markNodeAsCompleted(start_node);
+
+        std::cout << "[Vda5050Protocol] Order sent to AMR: " << ordered_nodes_.size()
+                  << " nodes (endNodes), " << edges.size() << " edges" << std::endl;
+        
+        // Publish state immediately after receiving order
+        publishStateMessage(amr);
+        std::cout << "[Vda5050Protocol] State published immediately after order reception" << std::endl;
+    } 
     catch (const nlohmann::json::exception& e)
     {
-        std::cerr << "[Vda5050Protocol] JSON parsing error: " << e.what() << std::endl;
+        std::cerr << "[Vda5050Protocol] JSON Parsing Error: " << e.what() << std::endl;
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Vda5050Protocol] Exception in handleMessage: " << e.what() << std::endl;
+        std::cerr << "[Vda5050Protocol] Unknown Error in handleMessage: " << e.what() << std::endl;
     }
 }
-
 
 
 void Vda5050Protocol::publishOrderRejectionError(const std::string& error_type, const std::string& error_description)
@@ -1254,7 +744,7 @@ void Vda5050Protocol::publishOrderRejectionError(const std::string& error_type, 
 }
 
 // VISUALIZATION MESSAGE
-void Vda5050Protocol::publishVisualizationMessage(IAmr* amr)
+void Vda5050Protocol::publishVisualizationMessage(IAmr* amr) 
 {
     if(!amr || !mqtt_client_ || !mqtt_client_->is_connected())
     {
@@ -1319,7 +809,7 @@ std::string Vda5050Protocol::makeVisualizationMessage(IAmr* amr)
 }
 
 // STATE MESSAGE PUBLISHING
-void Vda5050Protocol::publishStateMessage(IAmr* amr)
+void Vda5050Protocol::publishStateMessage(IAmr* amr) 
 {
     if (!amr_ || !mqtt_client_ || !mqtt_client_->is_connected()) 
     {
@@ -1749,33 +1239,6 @@ std::vector<NodeInfo> Vda5050Protocol::getUpcomingNodes(IAmr* amr)
 std::vector<EdgeInfo> Vda5050Protocol::getUpcomingEdges(IAmr* amr)
 {
     return amr->getCurrentEdges();
-}
-
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-ActionInfo Vda5050Protocol::convertActionToActionInfo(const Action& action, const std::string& status)
-{
-    ActionInfo info;
-    info.actionId = action.actionId;
-    info.actionType = action.actionType;
-    info.description = action.actionDescription;
-    info.status = status;
-    info.resultDescription = "";
-    
-    // actionParameters 변환
-    info.actionParameters = nlohmann::json::array();
-    for (const auto& param : action.actionParameters)
-    {
-        nlohmann::json param_json;
-        param_json["key"] = param.key;
-        param_json["value"] = param.value;
-        info.actionParameters.push_back(param_json);
-    }
-    
-    return info;
 }
 
 std::vector<ActionInfo> Vda5050Protocol::getCurrentActions(IAmr* amr)

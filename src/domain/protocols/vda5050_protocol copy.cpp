@@ -492,53 +492,6 @@ bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
         return false;
     }
     
-    // ========================================================================
-    // Cancel Order 처리 (nodes=[], edges=[])
-    // ========================================================================
-    auto nodes_json = order_json["nodes"];
-    auto edges_json = order_json["edges"];
-    
-    if (nodes_json.empty() && edges_json.empty())
-    {
-        std::cout << "[Vda5050Protocol] ===== ORDER CANCEL DETECTED =====" << std::endl;
-        std::cout << "[Vda5050Protocol] Empty nodes and edges - Cancelling order" << std::endl;
-        
-        if (!current_order_id_.empty())
-        {
-            std::cout << "[Vda5050Protocol] Cancelling current order: " 
-                      << current_order_id_ << std::endl;
-        }
-        
-        // 1. AMR Cancel 처리
-        if (amr_)
-        {
-            amr_->cancelOrder();
-        }
-        
-        // 2. Protocol 상태 초기화
-        current_order_id_ = "";
-        current_order_update_id_ = 0;
-        current_zone_set_id_ = "";
-        order_active_ = false;
-        
-        // 3. 내부 데이터 클리어
-        received_nodes_.clear();
-        received_edges_.clear();
-        ordered_nodes_.clear();
-        node_by_sequence_.clear();
-        edge_by_sequence_.clear();
-        
-        // 4. 즉시 State 발행 (매우 중요!)
-        std::cout << "[Vda5050Protocol] Publishing IDLE state..." << std::endl;
-        publishStateMessage(amr_);
-        
-        std::cout << "[Vda5050Protocol] Order cancelled successfully - AGV is IDLE" << std::endl;
-        std::cout << "[Vda5050Protocol] ===== Order Merge End =====" << std::endl;
-        
-        return true;
-    }
-    // ========================================================================
-        
     // 3. Determine if this is a new order or an update
     bool is_new_order = (new_order_id != current_order_id_);
     bool is_update = (!is_new_order && new_order_update_id > current_order_update_id_);
@@ -814,12 +767,11 @@ bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
         std::cout << "[Vda5050Protocol] Merged path now has " << received_nodes_.size() << " nodes, "
                   << received_edges_.size() << " edges" << std::endl;
         
-        // Send updated order to AMR (use updateOrder for Order Updates)
+        // Send updated order to AMR
         if (amr_)
         {
             std::vector<NodeInfo> all_nodes_for_amr = received_nodes_;
-            amr_->updateOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
-            std::cout << "[Vda5050Protocol] Called updateOrder() - AGV will continue from current position" << std::endl;
+            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
         }
         
         // Publish state again after merge

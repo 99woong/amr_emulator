@@ -1,4 +1,4 @@
-// vda5050_protocol.h - VDA5050 2.1 Schema compliant with Order Merge support
+// vda5050_protocol.h - VDA5050 2.1 Schema compliant
 #ifndef VDA5050_PROTOCOL_H
 #define VDA5050_PROTOCOL_H
 
@@ -7,7 +7,6 @@
 #include <thread>
 #include <vector>
 #include <set>
-#include <map>
 #include <mqtt/async_client.h>
 #include <nlohmann/json.hpp>
 #include "iprotocol.h"
@@ -95,17 +94,13 @@ private:
     bool order_active_;  // true when order is being executed, false when IDLE
     
     // Original order data from FMS (for state reporting)
-    std::vector<NodeInfo> received_nodes_;  // All nodes from FMS order (complete path)
-    std::vector<EdgeInfo> received_edges_;  // All edges from FMS order (complete path)
+    std::vector<NodeInfo> received_nodes_;  // All nodes from FMS order
+    std::vector<EdgeInfo> received_edges_;  // All edges from FMS order
     std::vector<NodeInfo> ordered_nodes_; 
 
     bool has_order_rejection_error_;
     std::string order_rejection_error_type_;
-    std::string order_rejection_error_description_;
-    
-    // Order Merge support - sequenceId 기반 빠른 검색
-    std::map<int, NodeInfo> node_by_sequence_;   // sequenceId -> NodeInfo
-    std::map<int, EdgeInfo> edge_by_sequence_;   // sequenceId -> EdgeInfo
+    std::string order_rejection_error_description_;    
     
     // Message creation functions
     std::string makeVisualizationMessage(IAmr* amr);
@@ -116,15 +111,6 @@ private:
     void handleInstantAction(const nlohmann::json& instant_action_json);
 
     void publishOrderRejectionError(const std::string& error_type, const std::string& error_description);
-    
-    // Order Merge 핵심 로직
-    bool mergeOrder(const nlohmann::json& order_json);
-    void parseOrderNodes(const nlohmann::json& nodes_json);
-    void parseOrderEdges(const nlohmann::json& edges_json);
-    bool validateOrder(const nlohmann::json& order_json, std::string& error_type, std::string& error_desc);
-    bool validateStartNodePosition(const NodeInfo& start_node, double current_x, double current_y, 
-                                   bool is_update_order, std::string& error_desc);
-    std::string findNearestNodeInCurrentPath(double current_x, double current_y);
     
     // Utility functions
     std::string getCurrentTimestampISO8601();
@@ -154,9 +140,6 @@ private:
     bool getEmergencyStopStatus(IAmr* amr);
     bool getFieldViolationStatus(IAmr* amr);
     bool isCharging(IAmr* amr);
-    
-    // Helper function for Action/ActionInfo conversion
-    ActionInfo convertActionToActionInfo(const Action& action, const std::string& status);
 };
 
 #endif // VDA5050_PROTOCOL_H
