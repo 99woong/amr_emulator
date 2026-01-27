@@ -966,79 +966,272 @@ void Vda5050Protocol::parseOrderEdges(const nlohmann::json& edges_json)
     }
 }
 
-bool Vda5050Protocol::validateOrder(const nlohmann::json& order_json, std::string& error_type, std::string& error_desc)
-{
-    // Check required fields
-    if (!order_json.contains("orderId"))
-    {
-        error_type = "orderError";
-        error_desc = "Missing required field: orderId";
-        return false;
-    }
+// bool Vda5050Protocol::validateOrder(const nlohmann::json& order_json, std::string& error_type, std::string& error_desc)
+// {
+//     // Check required fields
+//     if (!order_json.contains("orderId"))
+//     {
+//         error_type = "orderError";
+//         error_desc = "Missing required field: orderId";
+//         return false;
+//     }
     
-    if (!order_json.contains("orderUpdateId"))
-    {
-        error_type = "orderError";
-        error_desc = "Missing required field: orderUpdateId";
-        return false;
-    }
+//     if (!order_json.contains("orderUpdateId"))
+//     {
+//         error_type = "orderError";
+//         error_desc = "Missing required field: orderUpdateId";
+//         return false;
+//     }
     
-    if (!order_json.contains("nodes") || !order_json["nodes"].is_array())
-    {
-        error_type = "orderError";
-        error_desc = "Missing or invalid nodes array";
-        return false;
-    }
+//     if (!order_json.contains("nodes") || !order_json["nodes"].is_array())
+//     {
+//         error_type = "orderError";
+//         error_desc = "Missing or invalid nodes array";
+//         return false;
+//     }
     
-    if (!order_json.contains("edges") || !order_json["edges"].is_array())
-    {
-        error_type = "orderError";
-        error_desc = "Missing or invalid edges array";
-        return false;
-    }
+//     if (!order_json.contains("edges") || !order_json["edges"].is_array())
+//     {
+//         error_type = "orderError";
+//         error_desc = "Missing or invalid edges array";
+//         return false;
+//     }
   
-    // VDA5050 표준: Node는 짝수(0,2,4...), Edge는 홀수(1,3,5...)
-    const auto& nodes = order_json["nodes"];
-    const auto& edges = order_json["edges"];
+//     // VDA5050 표준: Node는 짝수(0,2,4...), Edge는 홀수(1,3,5...)
+//     const auto& nodes = order_json["nodes"];
+//     const auto& edges = order_json["edges"];
     
-    // Node sequenceId 검증: 짝수여야 함
-    for (size_t i = 0; i < nodes.size(); ++i)
-    {
-        if (!nodes[i].contains("sequenceId"))
-        {
-            error_type = "orderError";
-            error_desc = "Node missing sequenceId";
-            return false;
-        }
+//     // Node sequenceId 검증: 짝수여야 함
+//     for (size_t i = 0; i < nodes.size(); ++i)
+//     {
+//         if (!nodes[i].contains("sequenceId"))
+//         {
+//             error_type = "orderError";
+//             error_desc = "Node missing sequenceId";
+//             return false;
+//         }
         
-        int seq = nodes[i]["sequenceId"].get<int>();
-        if (seq % 2 != 0)  // 홀수이면 에러
-        {
-            error_type = "orderError";
-            error_desc = "Node has odd sequenceId (should be even): " + std::to_string(seq);
-            return false;
+//         int seq = nodes[i]["sequenceId"].get<int>();
+//         if (seq % 2 != 0)  // 홀수이면 에러
+//         {
+//             error_type = "orderError";
+//             error_desc = "Node has odd sequenceId (should be even): " + std::to_string(seq);
+//             return false;
+//         }
+//     }
+    
+//     // Edge sequenceId 검증: 홀수여야 함
+//     for (size_t i = 0; i < edges.size(); ++i)
+//     {
+//         if (!edges[i].contains("sequenceId"))
+//         {
+//             error_type = "orderError";
+//             error_desc = "Edge missing sequenceId";
+//             return false;
+//         }
+        
+//         int seq = edges[i]["sequenceId"].get<int>();
+//         if (seq % 2 == 0)  // 짝수이면 에러
+//         {
+//             error_type = "orderError";
+//             error_desc = "Edge has even sequenceId (should be odd): " + std::to_string(seq);
+//             return false;
+//         }
+//     }
+
+//     double wheel_base = 9.3; // todo : from /config/amr_params.yaml
+//     double max_steer_angle = 30.0 * M_PI / 180.0; // 라디안 변환
+//     double min_radius = wheel_base / std::tan(max_steer_angle);
+
+//     for (const auto& edge : order_json["edges"]) {
+//         if (edge.contains("turnCenter")) {
+//             double tx = edge["turnCenter"]["x"];
+//             double ty = edge["turnCenter"]["y"];
+            
+//             // 시작/끝 노드 검색
+//             std::string start_id = edge["startNodeId"];
+//             std::string end_id = edge["endNodeId"];
+//             auto nodes_json = order_json["nodes"];
+            
+//             auto s_it = std::find_if(nodes_json.begin(), nodes_json.end(), [&](const nlohmann::json& n){ return n["nodeId"] == start_id; });
+//             auto e_it = std::find_if(nodes_json.begin(), nodes_json.end(), [&](const nlohmann::json& n){ return n["nodeId"] == end_id; });
+
+//             if (s_it != nodes_json.end() && (*s_it).contains("nodePosition")) {
+//                 double sx = (*s_it)["nodePosition"]["x"];
+//                 double sy = (*s_it)["nodePosition"]["y"];
+//                 double stheta = (*s_it)["nodePosition"].value("theta", 0.0);
+                
+//                 // (A) 최소 반경 검증
+//                 double radius = std::hypot(tx - sx, ty - sy);
+//                 if (radius < min_radius) {
+//                     error_type = "noRouteError";
+//                     error_desc = "Radius too small: " + std::to_string(radius) + "m < min " + std::to_string(min_radius) + "m";
+//                     return false;
+//                 }
+
+//                 // (B) 기하학적 특이점(Singularity) 검증
+//                 // 진입 방향 벡터와 중심점 벡터 사이의 각도 계산
+//                 double dx = tx - sx;
+//                 double dy = ty - sy;
+//                 double angle_to_center = std::atan2(dy, dx);
+                
+//                 // 헤딩 방향과 중심점 방향의 차이가 0도 또는 180도 부근이면 방향 판정 불가
+//                 double diff = std::abs(std::remainder(stheta - angle_to_center, M_PI));
+//                 if (diff < 0.1 || diff > (M_PI - 0.1)) { // 약 5.7도 임계치
+//                     error_type = "noRouteError";
+//                     error_desc = "Geometric Singularity: turnCenter is on the heading line. Direction ambiguous.";
+//                     return false;
+//                 }
+
+//                 // (C) 원호 정합성 검증 (끝 노드 기준 반경도 동일한지 확인)
+//                 if (e_it != nodes_json.end() && (*e_it).contains("nodePosition")) {
+//                     double ex = (*e_it)["nodePosition"]["x"];
+//                     double ey = (*e_it)["nodePosition"]["y"];
+//                     double end_radius = std::hypot(tx - ex, ty - ey);
+//                     if (std::abs(radius - end_radius) > 0.5) { // 0.5m 오차 허용
+//                         error_type = "noRouteError";
+//                         error_desc = "Invalid Arc: Start and End nodes have different radii from turnCenter.";
+//                         return false;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     // for (const auto& edge : order_json["edges"]) {
+//     //     if (edge.contains("turnCenter")) {
+//     //         double tx = edge["turnCenter"]["x"];
+//     //         double ty = edge["turnCenter"]["y"];
+            
+//     //         // 시작 노드 좌표 가져오기 (반경 계산용)
+//     //         std::string start_node_id = edge["startNodeId"];
+//     //         auto start_node_it = std::find_if(order_json["nodes"].begin(), order_json["nodes"].end(),
+//     //             [&](const nlohmann::json& n) { return n["nodeId"] == start_node_id; });
+
+//     //         if (start_node_it != order_json["nodes"].end()) {
+//     //             double sx = (*start_node_it)["nodePosition"]["x"];
+//     //             double sy = (*start_node_it)["nodePosition"]["y"];
+                
+//     //             double calculated_radius = std::hypot(tx - sx, ty - sy);
+
+//     //             if (calculated_radius < min_radius) {
+//     //                 error_desc = "Invalid turnCenter: Radius (" + std::to_string(calculated_radius) + 
+//     //                                     "m) is smaller than AMR's minimum radius (" + std::to_string(min_radius) + "m)";
+//     //                 return false; // 검증 실패
+//     //             }
+//     //         }
+//     //     }
+//     // }
+
+//     return true;
+// }
+
+bool Vda5050Protocol::validateOrder(const nlohmann::json& order_json, 
+                                    std::string& error_type, std::string& error_desc)
+{
+    // ... 기존 코드 ...
+    
+    double wheel_base = 9.3;
+    double max_steer_angle = 30.0 * M_PI / 180.0;
+    double min_radius = wheel_base / std::tan(max_steer_angle);
+    
+    // ★ 추가: Pure Pursuit 안정성을 위한 최소 반경
+    double min_safe_radius = std::max(min_radius * 1.5, 8.0);  // 최소 8m
+    
+    for (const auto& edge : order_json["edges"]) {
+        if (edge.contains("turnCenter")) {
+            double tx = edge["turnCenter"]["x"];
+            double ty = edge["turnCenter"]["y"];
+            
+            std::string start_id = edge["startNodeId"];
+            std::string end_id = edge["endNodeId"];
+            auto nodes_json = order_json["nodes"];
+            
+            auto s_it = std::find_if(nodes_json.begin(), nodes_json.end(), 
+                [&](const nlohmann::json& n){ return n["nodeId"] == start_id; });
+            auto e_it = std::find_if(nodes_json.begin(), nodes_json.end(), 
+                [&](const nlohmann::json& n){ return n["nodeId"] == end_id; });
+
+            if (s_it != nodes_json.end() && (*s_it).contains("nodePosition")) {
+                double sx = (*s_it)["nodePosition"]["x"];
+                double sy = (*s_it)["nodePosition"]["y"];
+                double stheta = (*s_it)["nodePosition"].value("theta", 0.0);
+                
+                double radius = std::hypot(tx - sx, ty - sy);
+                
+                // (A) 물리적 최소 반경 검증
+                if (radius < min_radius) {
+                    error_type = "noRouteError";
+                    error_desc = "Radius too small: " + std::to_string(radius) + 
+                                "m < min " + std::to_string(min_radius) + "m";
+                    return false;
+                }
+                
+                // ★ (A-2) Pure Pursuit 안정성 검증
+                if (radius < min_safe_radius) {
+                    error_type = "noRouteError";
+                    error_desc = "Radius too small for stable tracking: " + 
+                                std::to_string(radius) + "m < safe min " + 
+                                std::to_string(min_safe_radius) + "m";
+                    return false;
+                }
+
+                // (B) 기하학적 특이점 검증
+                double dx = tx - sx;
+                double dy = ty - sy;
+                double angle_to_center = std::atan2(dy, dx);
+                double diff = std::abs(std::remainder(stheta - angle_to_center, M_PI));
+                
+                if (diff < 0.1 || diff > (M_PI - 0.1)) {
+                    error_type = "noRouteError";
+                    error_desc = "Geometric Singularity: turnCenter on heading line";
+                    return false;
+                }
+
+                // (C) 원호 정합성 검증
+                if (e_it != nodes_json.end() && (*e_it).contains("nodePosition")) {
+                    double ex = (*e_it)["nodePosition"]["x"];
+                    double ey = (*e_it)["nodePosition"]["y"];
+                    double end_radius = std::hypot(tx - ex, ty - ey);
+                    
+                    if (std::abs(radius - end_radius) > 0.5) {
+                        error_type = "noRouteError";
+                        error_desc = "Invalid Arc: Different radii at start/end";
+                        return false;
+                    }
+                }
+                
+                // ★ (D) 호의 각도 범위 검증 (너무 급격한 회전 방지)
+                // if (e_it != nodes_json.end() && (*e_it).contains("nodePosition")) {
+                //     double ex = (*e_it)["nodePosition"]["x"];
+                //     double ey = (*e_it)["nodePosition"]["y"];
+                    
+                //     double start_angle = std::atan2(sy - ty, sx - tx);
+                //     double end_angle = std::atan2(ey - ty, ex - tx);
+                //     double arc_angle = std::abs(std::remainder(end_angle - start_angle, 2*M_PI));
+                    
+                //     // 180도 이상 회전은 위험
+                //     if (arc_angle > M_PI) {
+                //         error_type = "noRouteError";
+                //         error_desc = "Arc angle too large: " + 
+                //                     std::to_string(arc_angle * 180.0 / M_PI) + " deg";
+                //         return false;
+                //     }
+                    
+                //     // 작은 반경에서 급격한 각도 변화 방지
+                //     double max_allowed_angle = M_PI / 2.0;  // 90도
+                //     if (radius < min_safe_radius * 1.5 && arc_angle > max_allowed_angle) {
+                //         error_type = "noRouteError";
+                //         error_desc = "Sharp turn on small radius: arc=" + 
+                //                     std::to_string(arc_angle * 180.0 / M_PI) + 
+                //                     " deg, radius=" + std::to_string(radius) + "m";
+                //         return false;
+                //     }
+                // }
+            }
         }
     }
-    
-    // Edge sequenceId 검증: 홀수여야 함
-    for (size_t i = 0; i < edges.size(); ++i)
-    {
-        if (!edges[i].contains("sequenceId"))
-        {
-            error_type = "orderError";
-            error_desc = "Edge missing sequenceId";
-            return false;
-        }
-        
-        int seq = edges[i]["sequenceId"].get<int>();
-        if (seq % 2 == 0)  // 짝수이면 에러
-        {
-            error_type = "orderError";
-            error_desc = "Edge has even sequenceId (should be odd): " + std::to_string(seq);
-            return false;
-        }
-    }
-    
+
     return true;
 }
 
@@ -1361,7 +1554,7 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
             // 송신 로그
             logMessage("OUT", state_topic_, state_msg);
 
-            std::cout << "[Vda5050Protocol] State message published successfully" << std::endl;
+            // std::cout << "[Vda5050Protocol] State message published successfully" << std::endl;
         }
     } 
     catch (const std::exception& e) 
@@ -1722,11 +1915,11 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
     
     bool all_edges_completed = (completed_edges.size() >= received_edges_.size());
 
-    std::cout << "[Vda5050Protocol] Order progress: Nodes(" << completed_nodes.size() 
-              << "/" << (is_circular ? ordered_nodes_.size() : ordered_nodes_.size() + 1) 
-              << ", unique: " << unique_node_count
-              << "), Edges(" << completed_edges.size() << "/" << received_edges_.size() 
-              << ") [" << (is_circular ? "CIRCULAR" : "LINEAR") << "]" << std::endl;    
+    // std::cout << "[Vda5050Protocol] Order progress: Nodes(" << completed_nodes.size() 
+    //           << "/" << (is_circular ? ordered_nodes_.size() : ordered_nodes_.size() + 1) 
+    //           << ", unique: " << unique_node_count
+    //           << "), Edges(" << completed_edges.size() << "/" << received_edges_.size() 
+    //           << ") [" << (is_circular ? "CIRCULAR" : "LINEAR") << "]" << std::endl;    
     
     // if (all_nodes_completed && all_edges_completed && !ordered_nodes_.empty())
     if (!received_edges_.empty() && all_edges_completed)

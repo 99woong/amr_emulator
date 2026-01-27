@@ -76,6 +76,10 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
         start_node = &(*sit);
     }
 
+    // amr.cpp 내의 적절한 위치 (예: 새로운 Edge 진입 시)
+    double cur_x, cur_y, cur_theta;
+    vcu_->getEstimatedPose(cur_x, cur_y, cur_theta); // 현재 로봇의 실시간 자세 획득    
+
     if(edge.hasTurnCenter)
     {
         std::cout << "[AMR" << id_ << "] Curved edge: " << edge.edgeId << std::endl;
@@ -84,6 +88,7 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
+            cur_theta,
             target_node ? target_node->x : 0.0,
             target_node ? target_node->y : 0.0,
             edge.turnCenter.x,  
@@ -99,6 +104,7 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
         vcu_->setTargetPosition(
             start_node ? start_node->x : 0.0,
             start_node ? start_node->y : 0.0,
+            cur_theta,
             target_node ? target_node->x : 0.0,
             target_node ? target_node->y : 0.0,
             0.0, 
@@ -107,54 +113,62 @@ void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>
             wheel_base
         );
     }    
-
-    // if (!edge.centerNodeId.empty())
-    // {
-    //     std::cout << "[AMR" << id_ << "] Looking for centerNodeId: " << edge.centerNodeId << std::endl;
-        
-    //     auto cit = std::find_if(all_nodes.begin(), all_nodes.end(),
-    //         [&](const NodeInfo& n) { return n.nodeId == edge.centerNodeId; });
-        
-    //     if (cit != all_nodes.end())
-    //     {
-    //         center_node = &(*cit);
-    //         std::cout << "[AMR" << id_ << "] Found centerNode: " << center_node->nodeId 
-    //                   << " at (" << center_node->x << ", " << center_node->y << ")" << std::endl;
-    //     }
-    //     else
-    //     {
-    //         std::cerr << "[AMR" << id_ << "] WARNING: centerNode '" << edge.centerNodeId 
-    //                   << "' not found in all_nodes!" << std::endl;
-    //     }
-    // }
-
-    // if(edge.has_turn_center && center_node) 
-    // {
-    //     vcu_->setTargetPosition(
-    //         start_node ? start_node->x : 0.0,
-    //         start_node ? start_node->y : 0.0,
-    //         target_node ? target_node->x : 0.0,
-    //         target_node ? target_node->y : 0.0,
-    //         center_node ? center_node->x : 0.0,
-    //         center_node ? center_node->y : 0.0,
-    //         true,
-    //         wheel_base
-    //     );
-    // } 
-    // else 
-    // {
-    //     vcu_->setTargetPosition(
-    //         start_node ? start_node->x : 0.0,
-    //         start_node ? start_node->y : 0.0,
-    //         target_node ? target_node->x : 0.0,
-    //         target_node ? target_node->y : 0.0,
-    //         0.0, 
-    //         0.0, 
-    //         false, 
-    //         wheel_base
-    //     );
-    // }
 }
+
+
+
+// void Amr::setVcuTargetFromEdge(const EdgeInfo& edge, const std::vector<NodeInfo>& nodes, 
+//                                const std::vector<NodeInfo>& all_nodes, double wheel_base)
+// {
+//     // target_node 찾기
+//     const NodeInfo* target_node = nullptr;
+//     const NodeInfo* start_node = nullptr;
+//     const NodeInfo* center_node = nullptr;
+
+//     auto it = std::find_if(nodes.begin(), nodes.end(),
+//         [&](const NodeInfo& n) { return n.nodeId == edge.endNodeId; });
+//     if (it != nodes.end())
+//         target_node = &(*it);
+
+//     auto sit = std::find_if(all_nodes.begin(), all_nodes.end(),
+//         [&](const NodeInfo& n) { return n.nodeId == edge.startNodeId; });        
+//     if (sit != all_nodes.end())
+//     {
+//         start_node = &(*sit);
+//     }
+
+//     if(edge.hasTurnCenter)
+//     {
+//         std::cout << "[AMR" << id_ << "] Curved edge: " << edge.edgeId << std::endl;
+//         std::cout << "  turnCenter: (" << edge.turnCenter.x << ", " << edge.turnCenter.y << ")" << std::endl;
+        
+//         vcu_->setTargetPosition(
+//             start_node ? start_node->x : 0.0,
+//             start_node ? start_node->y : 0.0,
+//             target_node ? target_node->x : 0.0,
+//             target_node ? target_node->y : 0.0,
+//             edge.turnCenter.x,  
+//             edge.turnCenter.y,  
+//             true,  // hasTurnCenter
+//             wheel_base
+//         );
+//     }
+//     else  // 직선 경로
+//     {
+//         std::cout << "[AMR" << id_ << "] Straight edge: " << edge.edgeId << std::endl;
+        
+//         vcu_->setTargetPosition(
+//             start_node ? start_node->x : 0.0,
+//             start_node ? start_node->y : 0.0,
+//             target_node ? target_node->x : 0.0,
+//             target_node ? target_node->y : 0.0,
+//             0.0, 
+//             0.0, 
+//             false,  // hasTurnCenter
+//             wheel_base
+//         );
+//     }    
+// }
 
 void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInfo>& edges, 
                   const std::vector<NodeInfo>& all_nodes, double wheel_base)
@@ -779,7 +793,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     double dy = target_node->y - cur_y;
     double dist = std::hypot(dx, dy);
 
-    std::cout << target_node->x <<" "<< cur_x << target_node->y <<" "<< cur_y << " " << cur_edge.hasTurnCenter << std::endl;
+    // std::cout << target_node->x <<" "<< cur_x << " " << target_node->y <<" "<< cur_y << " " << cur_edge.hasTurnCenter << std::endl;
 
     // 7. 속도 제한 설정 (VDA5050 개선: 동적 속도 참조)
     double max_speed = (max_speed_override_ > 0.0) ? max_speed_override_ : cur_edge.maxSpeed;
