@@ -6,7 +6,6 @@
 Vcu::Vcu(std::unique_ptr<IMotorController> motor, std::unique_ptr<INavigation> nav, std::unique_ptr<ILocalizer> localizer)
     : motor_(std::move(motor)), navigation_(std::move(nav)), localizer_(std::move(localizer)), target_x_(0), target_y_(0) 
 {
-
 }
 
 void Vcu::setTargetPosition(double start_x, double start_y, double target_x, double target_y, double center_x, double center_y, bool hasTurnCenter, double wheel_base)
@@ -35,24 +34,6 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     }
 }
 
-// void Vcu::stopVehicle()
-// {
-
-// }
-
-// void Vcu::setTargetArc(double start_x, double start_y, double center_x,
-//     double center_y, double end_x, double end_y, double wheeBase)
-// {
-    
-//     double radius = std::hypot(start_x - center_x, start_y - center_y);
-//     double start_angle = std::atan2(start_y - center_y, start_x - center_x);
-//     double end_angle = std::atan2(end_y - center_y, end_x - center_x);
-//     bool clockwise = false; 
-
-//     navigation_->setArcTarget(center_x, center_y, radius, start_angle, end_angle, clockwise);
-// }
-
-// void Vcu::update(double dt) 
 void Vcu::update(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     double left_rpm, right_rpm;

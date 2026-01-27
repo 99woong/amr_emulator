@@ -916,6 +916,25 @@ void Vda5050Protocol::parseOrderEdges(const nlohmann::json& edges_json)
             edge.maxSpeed = 1.0;
         }
         
+        // ========================================
+        // turnCenter 파싱
+        // ========================================
+        if (edge_json.contains("turnCenter") && edge_json["turnCenter"].is_object())
+        {
+            const auto& tc = edge_json["turnCenter"];
+            if (tc.contains("x") && tc.contains("y"))
+            {
+                edge.turnCenter.x = tc["x"].get<double>();
+                edge.turnCenter.y = tc["y"].get<double>();
+                edge.hasTurnCenter = true;
+                
+                std::cout << "[Vda5050Protocol] Edge " << edge.edgeId 
+                          << " has turnCenter: (" << edge.turnCenter.x 
+                          << ", " << edge.turnCenter.y << ")" << std::endl;
+            }
+        }
+        
+        
         // Parse actions
         if (edge_json.contains("actions") && edge_json["actions"].is_array())
         {

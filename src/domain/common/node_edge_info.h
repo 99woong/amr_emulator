@@ -116,10 +116,18 @@ struct EdgeInfo
     bool hasMaxRotationSpeed = false;
     bool hasLength = false;
     bool hasTrajectory = false;
+
+    struct TurnCenter 
+    {
+        double x;
+        double y;
+    }turnCenter;
+    
+    bool hasTurnCenter = false;
     
     // 기존 코드 호환성
-    std::string centerNodeId;
-    bool has_turn_center = false;
+    // std::string centerNodeId;
+    // bool has_turn_center = false;
 };
 
 // Order 전체 구조체

@@ -181,7 +181,7 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
 
     // radius_error 등을 반영해 약간 보정 
     // radius_error가 크면 속도 줄이거나 각속도 조정
-    // applyRadiusErrorCorrection(radius_error, linear_speed, angular_speed);
+    applyRadiusErrorCorrection(radius_error, linear_speed, angular_speed);
 
     out_linear = linear_speed;
     out_angular = angular_speed;
