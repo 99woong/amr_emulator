@@ -589,7 +589,7 @@ bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
         if (amr_)
         {
             std::vector<NodeInfo> all_nodes_for_amr = received_nodes_;
-            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
+            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 15);
         }
         
         order_active_ = true;
@@ -916,6 +916,24 @@ void Vda5050Protocol::parseOrderEdges(const nlohmann::json& edges_json)
             edge.maxSpeed = 1.0;
         }
         
+
+        if (edge_json.contains("turnCenter") && edge_json["turnCenter"].is_object())
+        {
+            const auto& tc = edge_json["turnCenter"];
+            if (tc.contains("x") && tc.contains("y"))
+            {
+                edge.turnCenter.x = tc["x"].get<double>();
+                edge.turnCenter.y = tc["y"].get<double>();
+                edge.hasTurnCenter = true;
+                edge.has_turn_center = true;  // 이전 코드 호환
+                
+                std::cout << "[Vda5050Protocol] Edge " << edge.edgeId 
+                          << " has turnCenter: (" << edge.turnCenter.x 
+                          << ", " << edge.turnCenter.y << ")" << std::endl;
+            }
+        }
+
+
         // Parse actions
         if (edge_json.contains("actions") && edge_json["actions"].is_array())
         {
@@ -1327,6 +1345,9 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
         return;
     }
 
+    // State 발행 직전에 완료 여부를 체크하여 최신 상태 동기화
+    checkOrderCompletion(amr);
+
     try 
     {
         std::string state_msg = makeStateMessage(amr);
@@ -1697,7 +1718,7 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
         all_nodes_completed = (completed_nodes.size() == ordered_nodes_.size() + 1);
     }
     
-    bool all_edges_completed = (completed_edges.size() == received_edges_.size());
+    bool all_edges_completed = (completed_edges.size() >= received_edges_.size());
 
     std::cout << "[Vda5050Protocol] Order progress: Nodes(" << completed_nodes.size() 
               << "/" << (is_circular ? ordered_nodes_.size() : ordered_nodes_.size() + 1) 
@@ -1705,7 +1726,8 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
               << "), Edges(" << completed_edges.size() << "/" << received_edges_.size() 
               << ") [" << (is_circular ? "CIRCULAR" : "LINEAR") << "]" << std::endl;    
     
-    if (all_nodes_completed && all_edges_completed && !ordered_nodes_.empty())
+    // if (all_nodes_completed && all_edges_completed && !ordered_nodes_.empty())
+    if (!received_edges_.empty() && all_edges_completed)
     {
         std::cout << "[Vda5050Protocol] Order completed - switching to IDLE state" << std::endl;
         order_active_ = false;
@@ -1713,6 +1735,9 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
         current_order_id_ = "";
         current_order_update_id_ = 0;
         current_zone_set_id_ = "";        
+
+        received_nodes_.clear();
+        received_edges_.clear();
         
         publishStateMessage(amr);
 

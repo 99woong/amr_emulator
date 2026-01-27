@@ -23,6 +23,7 @@ void AmrServerApp::run(const std::string& config_path)
     double next_state_pub = 0.0;
     double next_vis_pub = 0.0;
 
+    std::cout << "[AmrServer] Ver 0.7, 2026.01.21 " << std::endl;
     std::cout << "[AmrServer] Starting with speedup_ratio: " << speedup << std::endl;
     
     auto start_time = std::chrono::high_resolution_clock::now();

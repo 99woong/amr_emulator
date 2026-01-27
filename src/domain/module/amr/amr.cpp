@@ -141,6 +141,15 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     completed_edges_.clear();
     executing_actions_.clear();  // Action 상태도 초기화
 
+    if (!nodes_.empty())
+    {
+        // 시작 노드(리스트의 첫 번째)를 완료목록에 즉시 추가
+        completed_nodes_.push_back(nodes_.front()); 
+    
+        std::cout << "[AMR" << id_ << "] Start node '" << nodes_.front().nodeId 
+                  << "' added to completed_nodes (Initial)" << std::endl;
+    }
+
     if (!edges_.empty() && vcu_)
     {
         std::cout << "[AMR" << id_ << "] Starting order with edge: " << edges_[cur_edge_idx_].edgeId << std::endl;
@@ -668,12 +677,9 @@ void Amr::updateExecutingActions(double dt)
     );
 }
 
-// amr.cpp - Part 2: Step function and utilities
-
 // ========================================================================
 // 메인 Step 함수 (VDA5050 개선 반영)
 // ========================================================================
-
 void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     constexpr double reach_threshold = 0.01;
@@ -685,10 +691,10 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);
 
-    // 1. Action 실행 상태 업데이트
+    // Action 실행 상태 업데이트
     updateExecutingActions(dt);
     
-    // 2. 일시 정지 상태 확인
+    // 일시 정지 상태 확인
     if (is_paused_)
     {
         // 일시 정지 중에는 정지 상태 유지
@@ -699,17 +705,17 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         return;
     }
 
-    // 3. Order가 없으면 Idle
+    // Order가 없으면 Idle
     if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
     {
         vcu_->Idle(dt);
         return;
     }
     
-    // 4. VCU 업데이트
+    // VCU 업데이트
     vcu_->update(dt, other_robot_positions);
 
-    // 5. 현재 목표 노드 확인
+    // 현재 목표 노드 확인
     const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
     const NodeInfo* target_node = nullptr;
 
@@ -735,16 +741,16 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         return;
     }
 
-    // 6. 목표 노드까지 거리 계산
+    // 목표 노드까지 거리 계산
     double dx = target_node->x - cur_x;
     double dy = target_node->y - cur_y;
     double dist = std::hypot(dx, dy);
 
-    // 7. 속도 제한 설정 (VDA5050 개선: 동적 속도 참조)
+    // 속도 제한 설정 (VDA5050 개선: 동적 속도 참조)
     double max_speed = (max_speed_override_ > 0.0) ? max_speed_override_ : cur_edge.maxSpeed;
     vcu_->getMotor().setMaxSpeed(max_speed);
     
-    // 8. 도착 판정 거리 설정
+    // 도착 판정 거리 설정
     if (cur_edge.has_turn_center)
     {
         reach_distance_radius = 0.8;
@@ -756,7 +762,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         angle_area_radius = 0.1;
     }
     
-    // 9. 노드 도착 처리
+    // 노드 도착 처리
     if (dist < reach_distance_radius)
     {
         std::cout << "[AMR" << id_ << "] Arrived at node: " << target_node->nodeId 
@@ -795,7 +801,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         cur_edge_idx_++;
         is_angle_adjusting_ = false;
 
-        // 10. Order 완료 확인
+        // Order 완료 확인
         if (cur_edge_idx_ >= edges_.size())
         {
             std::cout << "[AMR" << id_ << "] All edges completed. Order finished." << std::endl;
@@ -810,14 +816,17 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
             cur_edge_idx_ = 0;
             executing_actions_.clear();
             
-            vcu_->Idle(dt);
+            // 다음 오더를 위해 비움
+            completed_nodes_.clear(); 
+            completed_edges_.clear();          
             
+            vcu_->Idle(dt);
             needs_immediate_state_publish_ = true;
             
             return;
         }
 
-        // 11. 다음 엣지 시작
+        // 다음 엣지 시작
         const EdgeInfo& next_edge = edges_[cur_edge_idx_];
         std::cout << "[AMR" << id_ << "] Moving to next edge: " << next_edge.edgeId 
                   << " (idx: " << cur_edge_idx_ << "/" << edges_.size() << ")" << std::endl;

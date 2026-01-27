@@ -149,6 +149,7 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
 
     // 목표 각도 진행 계산 (시계방향 or 반시계방향)
     double angle_diff = arc_end_angle_ - pos_angle;
+    std::cout << "angle : " << arc_end_angle_ << " " << pos_angle << std::endl;
 
     if (arc_clockwise_) 
     {
@@ -161,15 +162,15 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
             angle_diff += 2.0 * M_PI;
     }
 
-    // const double angle_threshold = 0.05; // 3도 정도 도달 허용
-    // if (std::abs(angle_diff) < angle_threshold) 
-    // {
-    //     // 원호 끝점 도달 시 원호 모드 종료 (직선 모드 전환 or 정지)
-    //     use_arc_ = false;
-    //     out_linear = 0.0;
-    //     out_angular = 0.0;
-    //     return;
-    // }
+    const double angle_threshold = 0.1; // 3도 정도 도달 허용
+    if (std::abs(angle_diff) < angle_threshold) 
+    {
+        // 원호 끝점 도달 시 원호 모드 종료 (직선 모드 전환 or 정지)
+        use_arc_ = false;
+        out_linear = 0.0;
+        out_angular = 0.0;
+        return;
+    }
 
     // 조향은 원호의 중심 방향으로 회전: 원호 반경과 각속도 관계
     // 각속도 w = v / r
@@ -181,7 +182,7 @@ void Navigation::updateArc(double current_x, double current_y, double current_th
 
     // radius_error 등을 반영해 약간 보정 
     // radius_error가 크면 속도 줄이거나 각속도 조정
-    // applyRadiusErrorCorrection(radius_error, linear_speed, angular_speed);
+    applyRadiusErrorCorrection(radius_error, linear_speed, angular_speed);
 
     out_linear = linear_speed;
     out_angular = angular_speed;
