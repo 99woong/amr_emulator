@@ -20,15 +20,16 @@ void Vcu::setTargetPosition(double start_x, double start_y, double target_x, dou
     }
     else
     {
-        std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
-        "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
+        // std::cout << "[VCU] Target ARC position set to (" << target_x_ << ", " << target_y_ << "), theta=" << target_theta_ << 
+        // "cx : " << center_x << "cy : " << center_y << "hasTurnCenter : " << hasTurnCenter <<std::endl;
         double radius = std::hypot(target_x - center_x, target_y - center_y);
         
+        // double radius = 27.1;
         double start_angle = std::atan2(start_y - center_y, start_x - center_x);
         double end_angle = std::atan2(target_y - center_y, target_x - center_x);
         bool clockwise = false;
         
-        std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
+        // std::cout << " radius "<< radius << " " << "start_angle : " << start_angle << " " << "end_angle : " << end_angle << std::endl;
 
         navigation_->setArcTarget(target_x_, target_y_, center_x, center_y, radius, start_angle, end_angle, clockwise);
     }

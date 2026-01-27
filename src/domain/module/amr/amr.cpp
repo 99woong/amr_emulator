@@ -145,16 +145,14 @@ void Amr::setOrder(const std::vector<NodeInfo>& nodes, const std::vector<EdgeInf
     {
         // 시작 노드(리스트의 첫 번째)를 완료목록에 즉시 추가
         completed_nodes_.push_back(nodes_.front()); 
-    
-        std::cout << "[AMR" << id_ << "] Start node '" << nodes_.front().nodeId 
-                  << "' added to completed_nodes (Initial)" << std::endl;
     }
+
 
     if (!edges_.empty() && vcu_)
     {
-        std::cout << "[AMR" << id_ << "] Starting order with edge: " << edges_[cur_edge_idx_].edgeId << std::endl;
-        std::cout << "[AMR" << id_ << "] Nodes for driving (endNodes): " << nodes_.size() << std::endl;
-        std::cout << "[AMR" << id_ << "] All nodes available (including centerNodes): " << all_nodes_.size() << std::endl;
+        // std::cout << "[AMR" << id_ << "] Starting order with edge: " << edges_[cur_edge_idx_].edgeId << std::endl;
+        // std::cout << "[AMR" << id_ << "] Nodes for driving (endNodes): " << nodes_.size() << std::endl;
+        // std::cout << "[AMR" << id_ << "] All nodes available (including centerNodes): " << all_nodes_.size() << std::endl;
                 
         const EdgeInfo& edge = edges_[cur_edge_idx_];
         setVcuTargetFromEdge(edge, nodes_, all_nodes_, wheel_base);
@@ -677,9 +675,12 @@ void Amr::updateExecutingActions(double dt)
     );
 }
 
+// amr.cpp - Part 2: Step function and utilities
+
 // ========================================================================
 // 메인 Step 함수 (VDA5050 개선 반영)
 // ========================================================================
+
 void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_robot_positions)
 {
     constexpr double reach_threshold = 0.01;
@@ -691,10 +692,10 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
     double cur_x, cur_y, cur_theta;
     vcu_->getEstimatedPose(cur_x, cur_y, cur_theta);
 
-    // Action 실행 상태 업데이트
+    // 1. Action 실행 상태 업데이트
     updateExecutingActions(dt);
     
-    // 일시 정지 상태 확인
+    // 2. 일시 정지 상태 확인
     if (is_paused_)
     {
         // 일시 정지 중에는 정지 상태 유지
@@ -705,17 +706,17 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         return;
     }
 
-    // Order가 없으면 Idle
+    // 3. Order가 없으면 Idle
     if (edges_.empty() || cur_edge_idx_ >= edges_.size() || !vcu_)
     {
         vcu_->Idle(dt);
         return;
     }
     
-    // VCU 업데이트
+    // 4. VCU 업데이트
     vcu_->update(dt, other_robot_positions);
 
-    // 현재 목표 노드 확인
+    // 5. 현재 목표 노드 확인
     const EdgeInfo& cur_edge = edges_[cur_edge_idx_];
     const NodeInfo* target_node = nullptr;
 
@@ -741,16 +742,16 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         return;
     }
 
-    // 목표 노드까지 거리 계산
+    // 6. 목표 노드까지 거리 계산
     double dx = target_node->x - cur_x;
     double dy = target_node->y - cur_y;
     double dist = std::hypot(dx, dy);
 
-    // 속도 제한 설정 (VDA5050 개선: 동적 속도 참조)
+    // 7. 속도 제한 설정 (VDA5050 개선: 동적 속도 참조)
     double max_speed = (max_speed_override_ > 0.0) ? max_speed_override_ : cur_edge.maxSpeed;
     vcu_->getMotor().setMaxSpeed(max_speed);
     
-    // 도착 판정 거리 설정
+    // 8. 도착 판정 거리 설정
     if (cur_edge.has_turn_center)
     {
         reach_distance_radius = 0.8;
@@ -762,7 +763,7 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
         angle_area_radius = 0.1;
     }
     
-    // 노드 도착 처리
+    // 9. 노드 도착 처리
     if (dist < reach_distance_radius)
     {
         std::cout << "[AMR" << id_ << "] Arrived at node: " << target_node->nodeId 
@@ -783,25 +784,18 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
             }
         }
         
-        if (is_duplicate)
-        {
-            std::cout << "[AMR" << id_ << "] Skipping duplicate node '" << target_node->nodeId 
-                      << "' (circular path)" << std::endl;
-        }
-        else
+        // 중복 체크 후 노드 추가
+        if (!is_duplicate)
         {
             completed_nodes_.push_back(*target_node);
-            std::cout << "[AMR" << id_ << "] Added node '" << target_node->nodeId 
-                      << "' (total: " << completed_nodes_.size() << ")" << std::endl;
         }
         
         needs_immediate_state_publish_ = true;
-
         // 다음 엣지로 이동
         cur_edge_idx_++;
         is_angle_adjusting_ = false;
 
-        // Order 완료 확인
+        // 10. Order 완료 확인
         if (cur_edge_idx_ >= edges_.size())
         {
             std::cout << "[AMR" << id_ << "] All edges completed. Order finished." << std::endl;
@@ -815,18 +809,18 @@ void Amr::step(double dt, const std::vector<std::pair<double, double>>& other_ro
             all_nodes_.clear();
             cur_edge_idx_ = 0;
             executing_actions_.clear();
-            
-            // 다음 오더를 위해 비움
-            completed_nodes_.clear(); 
-            completed_edges_.clear();          
+            // // 다음 오더를 위해 비움
+            // completed_nodes_.clear(); 
+            // completed_edges_.clear();             
             
             vcu_->Idle(dt);
+            
             needs_immediate_state_publish_ = true;
             
             return;
         }
 
-        // 다음 엣지 시작
+        // 11. 다음 엣지 시작
         const EdgeInfo& next_edge = edges_[cur_edge_idx_];
         std::cout << "[AMR" << id_ << "] Moving to next edge: " << next_edge.edgeId 
                   << " (idx: " << cur_edge_idx_ << "/" << edges_.size() << ")" << std::endl;

@@ -589,7 +589,7 @@ bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
         if (amr_)
         {
             std::vector<NodeInfo> all_nodes_for_amr = received_nodes_;
-            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 15);
+            amr_->setOrder(received_nodes_, received_edges_, all_nodes_for_amr, 0.5);
         }
         
         order_active_ = true;
@@ -916,24 +916,6 @@ void Vda5050Protocol::parseOrderEdges(const nlohmann::json& edges_json)
             edge.maxSpeed = 1.0;
         }
         
-
-        if (edge_json.contains("turnCenter") && edge_json["turnCenter"].is_object())
-        {
-            const auto& tc = edge_json["turnCenter"];
-            if (tc.contains("x") && tc.contains("y"))
-            {
-                edge.turnCenter.x = tc["x"].get<double>();
-                edge.turnCenter.y = tc["y"].get<double>();
-                edge.hasTurnCenter = true;
-                edge.has_turn_center = true;  // 이전 코드 호환
-                
-                std::cout << "[Vda5050Protocol] Edge " << edge.edgeId 
-                          << " has turnCenter: (" << edge.turnCenter.x 
-                          << ", " << edge.turnCenter.y << ")" << std::endl;
-            }
-        }
-
-
         // Parse actions
         if (edge_json.contains("actions") && edge_json["actions"].is_array())
         {
@@ -1345,7 +1327,7 @@ void Vda5050Protocol::publishStateMessage(IAmr* amr)
         return;
     }
 
-    // State 발행 직전에 완료 여부를 체크하여 최신 상태 동기화
+    //State 발행 직전에 완료 여부를 체크하여 최신 상태 동기화
     checkOrderCompletion(amr);
 
     try 
@@ -1660,7 +1642,7 @@ std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
 
 void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
 {
-    if (!order_active_ || !amr)
+    if (!order_active_ || !amr || received_edges_.empty())
         return;
     
     auto completed_nodes = amr->getCompletedNodes();
@@ -1688,7 +1670,8 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
         }
     }
     
-    // 수정: 순환 경로일 때 고유 노드 개수 계산
+    // 수정: 순환 경로(시작점과 끝점이 같은 경로)일 때 고유 노드 개수 계산
+    // NE4(시작)->NS1->NE1->NS2->NE2->NS3->NE3->NS4->NE4(끝)
     size_t unique_node_count = completed_nodes.size();
     
     if (is_circular)
@@ -1734,8 +1717,8 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
 
         current_order_id_ = "";
         current_order_update_id_ = 0;
-        current_zone_set_id_ = "";        
-
+        current_zone_set_id_ = "";    
+        
         received_nodes_.clear();
         received_edges_.clear();
         
