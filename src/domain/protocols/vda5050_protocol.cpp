@@ -1131,7 +1131,7 @@ bool Vda5050Protocol::validateOrder(const nlohmann::json& order_json,
 {
     // ... 기존 코드 ...
     
-    double wheel_base = 9.3;
+    const double wheel_base = 9.3;
     double max_steer_angle = 30.0 * M_PI / 180.0;
     double min_radius = wheel_base / std::tan(max_steer_angle);
     
@@ -1927,9 +1927,9 @@ void Vda5050Protocol::checkOrderCompletion(IAmr* amr)
         std::cout << "[Vda5050Protocol] Order completed - switching to IDLE state" << std::endl;
         order_active_ = false;
 
-        current_order_id_ = "";
-        current_order_update_id_ = 0;
-        current_zone_set_id_ = "";    
+        // current_order_id_ = "";
+        // current_order_update_id_ = 0;
+        // current_zone_set_id_ = "";    
         
         received_nodes_.clear();
         received_edges_.clear();
