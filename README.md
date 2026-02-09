@@ -1,5 +1,562 @@
 # 소개
-amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성을 모방하여 정교한 시뮬레이션 가능하게 함
+AMR Emulator는 실제 AMR(Autonomous Mobile Robot) 하드웨어 없이 VDA5050 프로토콜 기반의 제어로직을 검증하기 위한 시뮬레이터
+
+
+# 개발환경
+ - protocol : VDA5050 2.0
+ - 통신 : MQTT
+ - 언어 : C++
+
+
+# 주요기능
+ - VDA5050 Order 수신 및 처리,State 발행(New/Update/Cancel)
+ - Pure Pursuit 기반 경로 추종
+ - Dead Reckoning 측위
+ - 배터리 시뮬레이션
+ - 다중 AGV 시뮬레이션 지원
+
+
+# SW 구조
+![Diagram](image/emulator_sw_diagram.png)
+
+
+# 주요 코드 설명
+- main.cpp - 엔트리 포인트
+  - YAML 설정 파일 경로 로드
+  - AmrServerApp 실행
+```
+int main(int argc, char* argv[]) 
+{
+    std::string config_path;
+    if (argc > 1) config_path = argv[1];
+    AmrServerApp app;
+    app.run(config_path);
+    return 0;
+}
+```
+
+- amr_server.cpp - 메인 루프
+  - Control Loop: Motor/Navigation 업데이트
+  - State Publish: FMS로 State 발행
+  - Visualization: 시각화 데이터 발행        
+```
+void AmrServerApp::run(const std::string& config_path)
+{
+    // 1. 설정 로드
+    AmrConfig config = YamlConfig::load(config_path);
+    
+    // 2. AMR Manager 생성 및 시작
+    AmrManager manager(config);
+    manager.startAll();
+    
+    // 3. 시뮬레이션 타이밍 설정
+    const double dt_control = config.control_period;      // 10ms
+    const double dt_state = config.mqtt.state_publish_period;    // 1s
+    const double dt_vis = config.mqtt.visualization_publish_period; // 50ms
+    
+    // 4. 메인 루프
+    while (true)
+    {
+        // 4-1. 제어 주기 (10ms)
+        if (sim_time >= next_motor_update) 
+        {
+            for (auto& amr : amrs)
+            {
+                // 배터리 업데이트
+                amr->updateBattery(dt_control, is_charging);
+                
+                // 차량 업데이트 (Navigation + Motor)
+                amr->step(dt_control, other_positions);
+                
+                // 노드 도착 이벤트 처리
+                if (amr->needsImmediateStatePublish())
+                {
+                    protocol->publishStateMessage(amr.get());
+                    amr->resetImmediateStatePublishFlag();
+                }
+            }
+            next_motor_update += dt_control;
+        }
+        
+        // 4-2. State 발행 (1s)
+        if (sim_time >= next_state_pub) 
+        {
+            for (size_t i = 0; i < amrs.size(); ++i) 
+            {
+                protocol->publishStateMessage(amrs[i].get());
+            }
+            next_state_pub += dt_state;
+        }
+        
+        // 4-3. Visualization 발행 (50ms)
+        if (sim_time >= next_vis_pub) 
+        {
+            for (size_t i = 0; i < amrs.size(); ++i) 
+            {
+                protocol->publishVisualizationMessage(amrs[i].get());
+            }
+            next_vis_pub += dt_vis;
+        }
+        
+        std::this_thread::sleep_for(...);
+    }
+}
+```
+
+- vda5050_protocol.cpp - VDA5050 프로토콜 핸들러
+  - Order Merge 로직
+```
+  bool Vda5050Protocol::mergeOrder(const nlohmann::json& order_json)
+{
+    std::string new_order_id = order_json.value("orderId", "");
+    int new_order_update_id = order_json.value("orderUpdateId", 0);
+    
+    // 1. Cancel Order (nodes=[], edges=[])
+    if (nodes_json.empty() && edges_json.empty())
+    {
+        amr_->cancelOrder();
+        publishStateMessage(amr_);
+        return true;
+    }
+    
+    // 2. New Order (orderId 변경)
+    bool is_new_order = (new_order_id != current_order_id_);
+    if (is_new_order)
+    {
+        // 기존 Order 취소
+        amr_->cancelOrder();
+        
+        // 새 Order 파싱
+        parseOrderNodes(order_json["nodes"]);
+        parseOrderEdges(order_json["edges"]);
+        
+        // Start Node Position 검증
+        validateStartNodePosition(...);
+        
+        // AMR에 전달
+        amr_->setOrder(received_nodes_, received_edges_, ...);
+        
+        order_active_ = true;
+        publishStateMessage(amr_);
+    }
+    
+    // 3. Update Order (orderUpdateId 증가)
+    if (new_order_update_id > current_order_update_id_)
+    {
+        // sequenceId 기반 Merge
+        mergeNodesAndEdges();
+        publishStateMessage(amr_);
+    }
+    
+    return true;
+}
+```
+  - State Message 생성
+```
+std::string Vda5050Protocol::makeStateMessage(IAmr* amr)
+{
+    json state;
+    
+    // Header
+    state["headerId"] = state_header_id_++;
+    state["timestamp"] = getCurrentTimestampISO8601();
+    state["version"] = "2.0.0";
+    state["manufacturer"] = "ZENIXROBOTICS";
+    state["serialNumber"] = agv_id_;
+    
+    // Order Info
+    state["orderId"] = current_order_id_;
+    state["orderUpdateId"] = current_order_update_id_;
+    
+    // Node States (upcoming nodes만)
+    state["nodeStates"] = getUpcomingNodes(amr);
+    
+    // Edge States (upcoming edges만)
+    state["edgeStates"] = getUpcomingEdges(amr);
+    
+    // AGV Position
+    double x, y, theta;
+    amr->getVcu()->getEstimatedPose(x, y, theta);
+    state["agvPosition"] = {
+        {"x", x}, {"y", y}, {"theta", theta},
+        {"mapId", "default_map"}
+    };
+    
+    // Battery
+    state["batteryState"]["batteryCharge"] = amr->getBatterySoc();
+    
+    // Driving
+    state["driving"] = order_active_;
+    
+    return state.dump();
+}
+```
+
+
+- amr.cpp - AMR 인스턴스
+  - Order 설정
+```
+void Amr::setOrder(const std::vector<NodeInfo>& nodes, 
+                   const std::vector<EdgeInfo>& edges,
+                   const std::vector<NodeInfo>& all_nodes,
+                   double lookahead_distance)
+{
+    ordered_nodes_ = nodes;
+    ordered_edges_ = edges;
+    all_nodes_for_state_ = all_nodes;
+    
+    current_node_index_ = 0;
+    current_edge_index_ = 0;
+    order_active_ = true;
+    
+    std::cout << "[AMR] New order set: " << nodes.size() 
+              << " nodes, " << edges.size() << " edges" << std::endl;
+}
+```
+  - Step 실행(메인 업데이트)
+```
+void Amr::step(double dt, const std::vector<std::pair<double,double>>& other_positions)
+{
+    if (!order_active_ || ordered_nodes_.empty()) {
+        vcu_->Idle(dt);
+        return;
+    }
+    
+    // 현재 Node/Edge 가져오기
+    const NodeInfo& target_node = ordered_nodes_[current_node_index_];
+    const EdgeInfo* current_edge = getCurrentEdge();
+    
+    // VCU에 목표 위치 설정
+    if (!target_set_for_current_node_)
+    {
+        double start_x, start_y, start_theta;
+        vcu_->getEstimatedPose(start_x, start_y, start_theta);
+        
+        vcu_->setTargetPosition(
+            start_x, start_y, start_theta,
+            target_node.x, target_node.y,
+            current_edge->turnCenterX,
+            current_edge->turnCenterY,
+            current_edge->hasTurnCenter,
+            wheel_base_
+        );
+        
+        target_set_for_current_node_ = true;
+    }
+    
+    // VCU 업데이트 (Navigation + Motor)
+    vcu_->update(dt, other_positions);
+    
+    // 노드 도착 체크
+    double current_x, current_y, current_theta;
+    vcu_->getEstimatedPose(current_x, current_y, current_theta);
+    
+    double dx = target_node.x - current_x;
+    double dy = target_node.y - current_y;
+    double distance = std::hypot(dx, dy);
+    
+    if (distance < node_arrival_threshold_)
+    {
+        std::cout << "[AMR] Arrived at node: " << target_node.nodeId << std::endl;
+        
+        last_node_id_ = target_node.nodeId;
+        last_node_sequence_id_ = target_node.sequenceId;
+        
+        // 다음 노드로 이동
+        current_node_index_++;
+        current_edge_index_++;
+        target_set_for_current_node_ = false;
+        
+        // State 즉시 발행 플래그
+        immediate_state_publish_needed_ = true;
+        
+        // Order 완료 체크
+        if (current_node_index_ >= ordered_nodes_.size())
+        {
+            std::cout << "[AMR] Order completed!" << std::endl;
+            order_active_ = false;
+        }
+    }
+}
+```
+
+-  vcu.cpp - Vehicle Control Unit
+ - 목표 위치 설정
+```
+void Vcu::setTargetPosition(
+    double start_x, double start_y, double start_theta,
+    double target_x, double target_y,
+    double center_x, double center_y,
+    bool hasTurnCenter, double wheel_base)
+{
+    target_x_ = target_x;
+    target_y_ = target_y;
+    
+    if (!hasTurnCenter) 
+    {
+        // 직진 주행
+        navigation_->setTarget(target_x_, target_y_);
+    }
+    else 
+    {
+        // 곡선 주행 (Arc)
+        double radius = std::hypot(target_x - center_x, target_y - center_y);
+        double start_angle = std::atan2(start_y - center_y, start_x - center_x);
+        double end_angle = std::atan2(target_y - center_y, target_x - center_x);
+        
+        // 회전 방향 판별 (로컬 좌표계 기준)
+        double dx = center_x - start_x;
+        double dy = center_y - start_y;
+        double local_center_y = -std::sin(start_theta) * dx + std::cos(start_theta) * dy;
+        
+        bool clockwise = (local_center_y < 0); 
+        
+        navigation_->setArcTarget(
+            target_x_, target_y_, center_x, center_y,
+            radius, start_angle, end_angle, clockwise
+        );
+    }
+}
+```
+ - Update
+```
+void Vcu::update(double dt, const std::vector<std::pair<double,double>>& other_positions)
+{
+    // 1. Motor에서 현재 RPM 가져오기
+    double left_rpm, right_rpm;
+    motor_->getRPM(left_rpm, right_rpm);
+    
+    // 2. Localizer 업데이트 (Dead Reckoning)
+    localizer_->update(left_rpm, right_rpm, dt);
+    
+    // 3. 현재 Pose 가져오기
+    double current_x, current_y, current_theta;
+    localizer_->getPose(current_x, current_y, current_theta);
+    
+    // 4. Navigation 업데이트 (Pure Pursuit)
+    double linear_vel_cmd, angular_vel_cmd;
+    navigation_->update(
+        current_x, current_y, current_theta,
+        linear_vel_cmd, angular_vel_cmd,
+        other_positions
+    );
+    
+    // 5. Motor에 속도 명령 설정
+    motor_->setVelocity(linear_vel_cmd, angular_vel_cmd);
+    
+    // 6. Motor 업데이트 (가속도 모델 적용)
+    motor_->update(dt);
+}
+```
+
+- motor_controller.cpp - 모터 제어
+```
+void MotorController::update(double dt) 
+{
+    // 1. 가속도 모델 적용
+    if (acceleration_model_) 
+    {
+        linear_vel_actual_ = acceleration_model_->applyAcceleration(
+            linear_vel_actual_, linear_vel_cmd_, dt
+        );
+        angular_vel_actual_ = acceleration_model_->applyAngularAcceleration(
+            angular_vel_actual_, angular_vel_cmd_, dt
+        );
+    }
+    
+    // 2. 차동 구동 휠 속도 계산
+    double left_wheel_speed, right_wheel_speed;
+    left_wheel_speed = linear_vel_actual_ - (angular_vel_actual_ * wheel_base_ / 2.0);
+    right_wheel_speed = linear_vel_actual_ + (angular_vel_actual_ * wheel_base_ / 2.0);
+    
+    // 3. RPM 변환
+    left_rpm_ = (left_wheel_speed / (2.0 * M_PI * wheel_radius_)) * 60.0;
+    right_rpm_ = (right_wheel_speed / (2.0 * M_PI * wheel_radius_)) * 60.0;
+}
+```
+
+- localizer.cpp - 측위
+ - 좌우 바퀴 RPM 기반
+ - Differential Drive 운동학
+ - 누적 오차 발생 (장시간 주행 시)
+```
+void Localizer::update(double left_rpm, double right_rpm, double dt)
+{
+    if (dr_model_)
+    {
+        dr_model_->update(left_rpm, right_rpm, dt);
+    }
+}
+
+void Localizer::getPose(double& x, double& y, double& theta) const
+{
+    if (dr_model_)
+    {
+        dr_model_->getPose(x, y, theta);
+    }
+}
+```
+
+- navigation.cpp - Pure Pursuit
+ - 직진 주행
+```
+void Navigation::setTarget(double target_x, double target_y)
+{
+    target_x_ = target_x;
+    target_y_ = target_y;
+    is_arc_mode_ = false;
+}
+```
+ - 곡선 주행(Arc)
+```
+void Navigation::setArcTarget(
+    double target_x, double target_y,
+    double center_x, double center_y,
+    double radius, double start_angle, double end_angle,
+    bool clockwise)
+{
+    target_x_ = target_x;
+    target_y_ = target_y;
+    arc_center_x_ = center_x;
+    arc_center_y_ = center_y;
+    arc_radius_ = radius;
+    arc_start_angle_ = start_angle;
+    arc_end_angle_ = end_angle;
+    arc_clockwise_ = clockwise;
+    is_arc_mode_ = true;
+}
+```
+
+ - Pure Pursuit
+```
+   void Navigation::update(
+    double current_x, double current_y, double current_theta,
+    double& linear_vel, double& angular_vel,
+    const std::vector<std::pair<double,double>>& other_positions)
+{
+    // 1. 목표 지점까지 거리 계산
+    double dx = target_x_ - current_x;
+    double dy = target_y_ - current_y;
+    double distance = std::hypot(dx, dy);
+    
+    // 2. 목표 도달 체크
+    if (distance < goal_tolerance_)
+    {
+        linear_vel = 0.0;
+        angular_vel = 0.0;
+        return;
+    }
+    
+    // 3. Lookahead Point 계산
+    double lookahead_x, lookahead_y;
+    if (is_arc_mode_)
+    {
+        // Arc 경로의 Lookahead Point
+        calculateArcLookahead(current_x, current_y, lookahead_x, lookahead_y);
+    }
+    else
+    {
+        // 직선 경로의 Lookahead Point
+        double ratio = lookahead_distance_ / distance;
+        lookahead_x = current_x + dx * ratio;
+        lookahead_y = current_y + dy * ratio;
+    }
+    
+    // 4. Pure Pursuit Curvature 계산
+    double alpha = std::atan2(lookahead_y - current_y, lookahead_x - current_x) - current_theta;
+    double L = std::hypot(lookahead_x - current_x, lookahead_y - current_y);
+    double curvature = 2.0 * std::sin(alpha) / L;
+    
+    // 5. 속도 계산
+    linear_vel = max_speed_;
+    angular_vel = curvature * linear_vel;
+    
+    // 6. 속도 제한
+    angular_vel = std::clamp(angular_vel, -max_angular_speed_, max_angular_speed_);
+}
+```
+   
+- yaml_config.cpp - 설정 로드
+```
+AmrConfig YamlConfig::load(const std::string& filename) 
+{
+    YAML::Node config = YAML::LoadFile(filename);
+    AmrConfig cfg;
+    
+    cfg.amr_count = config["amr_count"].as<int>();
+    cfg.protocol_type = config["protocol_type"].as<std::string>();
+    
+    // AMR 파라미터
+    cfg.amr_params.wheel_radius = config["amr_params"]["wheel_radius"].as<double>();
+    cfg.amr_params.wheel_base = config["amr_params"]["wheel_base"].as<double>();
+    cfg.amr_params.max_speed = config["amr_params"]["max_speed"].as<double>();
+    
+    // MQTT 설정
+    cfg.mqtt.server_address = config["mqtt"]["server_address"].as<std::string>();
+    cfg.mqtt.state_publish_period = config["mqtt"]["state_publish_period"].as<double>();
+    
+    // 초기 위치
+    cfg.initial_pose.x = config["initial_pose"]["x"].as<double>();
+    cfg.initial_pose.y = config["initial_pose"]["y"].as<double>();
+    cfg.initial_pose.heading = config["initial_pose"]["heading"].as<double>();
+    
+    return cfg;
+}
+```
+# Data Flow(Order -> 주행)
+1. FMS → MQTT Order 발행
+2. Vda5050Protocol::message_arrived()
+3. Vda5050Protocol::mergeOrder()
+   - Order Validation
+   - parseOrderNodes()
+   - parseOrderEdges()
+4. Amr::setOrder()
+   - ordered_nodes_ 저장
+   - ordered_edges_ 저장
+5. AmrServer 메인 루프 (10ms)
+6. Amr::step()
+   - 현재 Node/Edge 확인
+   - Vcu::setTargetPosition()
+7. Vcu::update()
+   - Localizer::update() (현재 위치)
+   - Navigation::update() (Pure Pursuit)
+   - MotorController::setVelocity()
+   - MotorController::update()
+8. MotorController
+   - 가속도 모델 적용
+   - RPM 계산
+9. Localizer
+   - Dead Reckoning
+   - Pose 업데이트
+10. 노드 도착 체크
+    - distance < threshold
+    - 다음 노드로 이동
+    - State 즉시 발행
+   
+# Build 및 실행
+- dependency
+```
+# Ubuntu 20.04/22.04
+sudo apt install -y \
+    build-essential \
+    cmake \
+    libyaml-cpp-dev \
+    nlohmann-json3-dev \
+    libpaho-mqtt-dev \
+    libpaho-mqttpp-dev
+```
+- build
+```
+cd amr_emulator
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+- 빠른실행(오더 발행/주행/시각화)
+```
+cd amr_emulator
+./run.sh
+```
 
 # 기대효과
 ###  정교한 시뮬레이션
@@ -10,7 +567,6 @@ amr_emulator는 AMR을 가상환경에서 시뮬레이션할 때, AMR 동특성�
 ###  개발속도 가속화
   - 물리적 AMR 없이, 조기 통합 테스트 활성화
   - 주요 모듈(통신,제어,센서) 손쉽게 교체함으로써 모듈간 상호 영향없이 AMR 빠른 검증 가능
-
 
 
 # Requirement / 기능명세
