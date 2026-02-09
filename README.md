@@ -20,6 +20,32 @@ AMR Emulator는 실제 AMR(Autonomous Mobile Robot) 하드웨어 없이 VDA5050 
 ![Diagram](image/emulator_sw_diagram.png)
 
 
+# Build 및 실행
+- dependency
+```
+# Ubuntu 20.04/22.04
+sudo apt install -y \
+    build-essential \
+    cmake \
+    libyaml-cpp-dev \
+    nlohmann-json3-dev \
+    libpaho-mqtt-dev \
+    libpaho-mqttpp-dev
+```
+- build
+```
+cd amr_emulator
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+- 빠른실행(오더 발행/주행/시각화)
+```
+cd amr_emulator
+./run.sh
+```
+
+
 # 주요 코드 설명
 - main.cpp - 엔트리 포인트
   - YAML 설정 파일 경로 로드
@@ -533,30 +559,7 @@ AmrConfig YamlConfig::load(const std::string& filename)
     - 다음 노드로 이동
     - State 즉시 발행
    
-# Build 및 실행
-- dependency
-```
-# Ubuntu 20.04/22.04
-sudo apt install -y \
-    build-essential \
-    cmake \
-    libyaml-cpp-dev \
-    nlohmann-json3-dev \
-    libpaho-mqtt-dev \
-    libpaho-mqttpp-dev
-```
-- build
-```
-cd amr_emulator
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-```
-- 빠른실행(오더 발행/주행/시각화)
-```
-cd amr_emulator
-./run.sh
-```
+
 
 # 기대효과
 ###  정교한 시뮬레이션
